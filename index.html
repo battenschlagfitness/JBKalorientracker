@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Kalorientracker</title>
+<title>JB Fitness</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -98,11 +98,19 @@
   .addbtn:disabled { background:rgba(255,255,255,0.08); color:#4a5a6a; }
   .fab { position:fixed; bottom:calc(30px + env(safe-area-inset-bottom)); right:20px; width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#4caf82,#3d9e73); border:none; color:#fff; font-size:28px; box-shadow:0 4px 20px rgba(76,175,130,0.4); z-index:50; display:flex; align-items:center; justify-content:center; }
 </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4caf82">
+<script>
+if ('serviceWorker' in navigator) {
+ window.addEventListener('load', ()=>navigator.serviceWorker.register('./service-worker.js'));
+}
+</script>
 </head>
 <body>
 <header>
   <div class="eyebrow">Dein Tagebuch</div>
-  <div class="title">Kalorientracker 🔥</div>
+  <div class="title">JB Fitness 🔥</div>
   <div class="sub" id="sub"></div>
 </header>
 
