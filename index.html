@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Kalorientracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kalorien">
+<meta name="theme-color" content="#0f0f1a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' rx='40' fill='%231a1a2e'/%3E%3Ctext x='90' y='118' font-size='90' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --bg1:#0f0f1a; --bg2:#1a1a2e; --bg3:#16213e;
+    --green:#4caf82; --red:#e8675a; --amber:#e8a84a; --blue:#7ec8e3;
+    --text:#f0ede8; --muted:#a09888; --muted2:#7a8fa6; --dim:#6a7a8a;
+  }
+  html,body { background:var(--bg1); color:var(--text); font-family:Georgia,'Times New Roman',serif; min-height:100vh; overflow-x:hidden; }
+  body { background:linear-gradient(135deg,#0f0f1a 0%,#1a1a2e 50%,#16213e 100%); background-attachment:fixed; padding-bottom:100px; }
+  .wrap { max-width:480px; margin:0 auto; padding:0 16px; }
+  input,textarea,button { font-family:inherit; }
+  input:focus,textarea:focus { outline:none; }
+
+  header { background:rgba(255,255,255,0.04); border-bottom:1px solid rgba(255,255,255,0.08); padding:calc(20px + env(safe-area-inset-top)) 20px 16px; position:sticky; top:0; z-index:10; -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
+  .eyebrow { font-size:11px; letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+  .title { font-size:22px; font-weight:bold; letter-spacing:-0.5px; }
+  .sub { font-size:12px; color:var(--muted2); margin-top:2px; }
+
+  .datebar { display:flex; align-items:center; gap:10px; margin:20px 0; }
+  .datebtn { background:rgba(255,255,255,0.08); border:none; color:var(--text); border-radius:8px; padding:8px 14px; font-size:16px; }
+  .datebtn:disabled { color:#3a3a5a; }
+  .datelabel { flex:1; text-align:center; }
+  .datelabel .d1 { font-size:15px; font-weight:bold; }
+  .datelabel .d2 { font-size:11px; color:var(--muted); }
+
+  .card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:24px 20px; margin-bottom:16px; }
+  .card.sm { border-radius:14px; padding:14px 16px; background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.06); }
+  .ringrow { display:flex; align-items:center; gap:20px; }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+  .remain { font-size:26px; font-weight:bold; }
+  .defbox { background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; }
+  .defbox .t { font-size:11px; color:var(--muted2); margin-bottom:2px; }
+  .defbox .v { font-size:18px; font-weight:bold; }
+  .defbox .s { font-size:10px; color:var(--dim); }
+
+  .cap { font-size:11px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+  .barbg { height:10px; background:rgba(255,255,255,0.08); border-radius:99px; overflow:hidden; }
+  .barfill { height:100%; border-radius:99px; transition:width .6s ease; }
+
+  .entry { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+  .ico { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .ename { font-size:14px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .emeta { font-size:11px; color:var(--muted2); }
+  .ekcal { font-size:16px; font-weight:bold; }
+  .del { background:rgba(232,103,90,0.15); border:1px solid rgba(232,103,90,0.3); color:var(--red); border-radius:8px; width:28px; height:28px; font-size:14px; flex-shrink:0; }
+  .empty { text-align:center; padding:30px 0; color:#4a5a6a; font-size:14px; }
+
+  .histrow { margin-bottom:8px; }
+  .histtop { display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+
+  .wbtn { background:linear-gradient(135deg,#7ec8e3,#5ba8c8); border:none; color:#fff; border-radius:10px; padding:11px 16px; font-size:13px; font-weight:bold; flex-shrink:0; }
+  .winput { width:90px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:11px 12px; color:var(--text); font-size:15px; text-align:center; }
+
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; display:none; align-items:flex-end; }
+  .overlay.open { display:flex; }
+  .sheet { width:100%; max-width:480px; margin:0 auto; background:var(--bg2); border-radius:24px 24px 0 0; border:1px solid rgba(255,255,255,0.1); padding:24px 20px calc(40px + env(safe-area-inset-bottom)); max-height:90vh; overflow-y:auto; }
+  .grip { width:40px; height:4px; background:rgba(255,255,255,0.2); border-radius:99px; margin:0 auto 20px; }
+  .sheet-title { font-size:16px; font-weight:bold; margin-bottom:16px; }
+
+  .toggle { display:flex; background:rgba(255,255,255,0.06); border-radius:12px; padding:4px; margin-bottom:16px; }
+  .toggle button { flex:1; padding:9px 0; border-radius:9px; border:none; background:transparent; color:var(--muted2); font-size:13px; }
+  .toggle button.active { background:rgba(255,255,255,0.12); color:var(--text); font-weight:bold; }
+
+  .fld { width:100%; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px 14px; color:var(--text); font-size:14px; }
+  .lbl { font-size:11px; color:var(--muted); margin-bottom:5px; }
+  .row { display:flex; gap:10px; margin-bottom:10px; }
+  .col { flex:1; }
+
+  .seclabel { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); padding:10px 14px 4px; }
+  .suggest { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; margin:8px 0 12px; max-height:300px; overflow-y:auto; }
+  .sg { display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .sg:last-child { border-bottom:none; }
+  .sg:active { background:rgba(126,200,227,0.12); }
+  .sg .n { flex:1; font-size:14px; }
+  .sg .m { font-size:11px; color:var(--muted2); text-align:right; line-height:1.3; }
+  .star { background:none; border:none; color:var(--amber); font-size:20px; width:30px; flex-shrink:0; }
+  .badge { font-size:10px; opacity:0.7; }
+
+  .calcbox { background:rgba(76,175,130,0.15); border:1px solid rgba(76,175,130,0.3); border-radius:10px; padding:8px 14px; margin-bottom:10px; font-size:13px; color:var(--green); text-align:center; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .chip { border-radius:20px; padding:5px 10px; font-size:12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--muted); }
+  .checkrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:10px 14px; background:rgba(232,168,74,0.08); border:1px solid rgba(232,168,74,0.2); border-radius:12px; font-size:13px; color:var(--amber); }
+  .checkrow input { width:20px; height:20px; accent-color:var(--amber); }
+
+  .addbtn { width:100%; border:none; border-radius:14px; padding:15px; color:#fff; font-size:15px; font-weight:bold; background:linear-gradient(135deg,#4caf82,#3d9e73); }
+  .addbtn:disabled { background:rgba(255,255,255,0.08); color:#4a5a6a; }
+  .fab { position:fixed; bottom:calc(30px + env(safe-area-inset-bottom)); right:20px; width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#4caf82,#3d9e73); border:none; color:#fff; font-size:28px; box-shadow:0 4px 20px rgba(76,175,130,0.4); z-index:50; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Dein Tagebuch</div>
+  <div class="title">Kalorientracker 🔥</div>
+  <div class="sub" id="sub"></div>
+</header>
+
+<div id="installHint" style="display:none;max-width:480px;margin:12px auto 0;padding:0 16px">
+  <div style="background:rgba(126,200,227,0.1);border:1px solid rgba(126,200,227,0.3);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--blue);display:flex;align-items:center;gap:10px">
+    <span style="flex:1">📲 Tipp: <b>Teilen</b>-Symbol → „Zum Home-Bildschirm" – dann hast du die App als Icon mit Vollbild.</span>
+    <button id="hintClose" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);border-radius:8px;width:26px;height:26px;font-size:14px;flex-shrink:0">×</button>
+  </div>
+</div>
+
+<div class="wrap" id="app"></div>
+<button class="fab" id="fab">+</button>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet">
+    <div class="grip"></div>
+    <div class="sheet-title">Eintrag hinzufügen</div>
+    <div class="toggle">
+      <button id="tabSearch" class="active">🔍 Suchen</button>
+      <button id="tabManual">✏️ Manuell</button>
+    </div>
+    <div id="searchPane">
+      <input class="fld" id="searchInput" placeholder="Suchen… z.B. Rührei, Reis, Pizza" autocomplete="off">
+      <div class="suggest" id="suggest"></div>
+    </div>
+    <input class="fld" id="fName" placeholder="Name des Lebensmittels" style="margin-bottom:10px">
+    <div class="row">
+      <div class="col"><div class="lbl">kcal / 100g</div><input class="fld" id="fKcal" type="number" inputmode="numeric" placeholder="z.B. 165"></div>
+      <div class="col"><div class="lbl">Menge (g)</div><input class="fld" id="fMenge" type="number" inputmode="numeric" placeholder="100"></div>
+    </div>
+    <div class="row">
+      <div class="col"><div class="lbl" style="color:var(--amber)">🥩 Eiweiß / 100g</div><input class="fld" id="fEiweiss" type="number" inputmode="decimal" placeholder="z.B. 31" style="background:rgba(232,168,74,0.08);border-color:rgba(232,168,74,0.2)"></div>
+      <div class="col"></div>
+    </div>
+    <div id="calc"></div>
+    <label class="checkrow" id="customRow"><input type="checkbox" id="saveCustom"> 📌 Als eigenes Lebensmittel merken (erscheint künftig in der Suche)</label>
+    <div class="lbl">Kategorie</div>
+    <div class="chips" id="chips"></div>
+    <button class="addbtn" id="saveBtn" disabled>Hinzufügen ✓</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const TDEE = 2760, ZIEL = 2000, EIWEISS_ZIEL = 140, START_GEWICHT = 73;
+
+const KAT = {
+  "🍎 Obst":"#e8675a","🥦 Gemüse":"#4caf82","🍗 Protein":"#e8a84a","🥛 Milchprodukte":"#7ec8e3",
+  "🍞 Kohlenhydrate":"#c8a96e","🥑 Fette":"#a8c56e","🍰 Snacks/Süßes":"#e87fb4","🥤 Getränke":"#8fb4e8","🍳 Sonstiges":"#b8b8b8"
+};
+
+const DB = [
+  ["Rührei (mit Butter)",154,11,"🍗 Protein"],
+  ["Spiegelei",196,14,"🍗 Protein"],
+  ["Ei, gekocht",155,13,"🍗 Protein"],
+  ["Eiweiß (Eiklar)",52,11,"🍗 Protein"],
+  ["Eigelb",322,16,"🍗 Protein"],
+  ["Omelett",154,11,"🍗 Protein"],
+  ["Pochiertes Ei",143,12,"🍗 Protein"],
+  ["Hähnchenbrustfilet",165,31,"🍗 Protein"],
+  ["Hähnchenschenkel",177,24,"🍗 Protein"],
+  ["Hähnchenflügel",203,30,"🍗 Protein"],
+  ["Hähnchen paniert",242,18,"🍗 Protein"],
+  ["Pute, Brust",105,24,"🍗 Protein"],
+  ["Putenschnitzel",111,24,"🍗 Protein"],
+  ["Rinderhack (mager)",137,21,"🍗 Protein"],
+  ["Hackfleisch gemischt",250,17,"🍗 Protein"],
+  ["Rindersteak",217,26,"🍗 Protein"],
+  ["Rinderfilet",158,21,"🍗 Protein"],
+  ["Roastbeef",120,22,"🍗 Protein"],
+  ["Schweineschnitzel",143,21,"🍗 Protein"],
+  ["Schweinefilet",143,21,"🍗 Protein"],
+  ["Schweinebraten",215,26,"🍗 Protein"],
+  ["Schweinebauch",518,9,"🍗 Protein"],
+  ["Kasseler",153,19,"🍗 Protein"],
+  ["Lammkotelett",294,25,"🍗 Protein"],
+  ["Ente",337,19,"🍗 Protein"],
+  ["Gans",371,16,"🍗 Protein"],
+  ["Leberkäse",278,12,"🍗 Protein"],
+  ["Frikadelle",247,15,"🍗 Protein"],
+  ["Hähnchen-Nuggets",296,15,"🍗 Protein"],
+  ["Gyros",215,18,"🍗 Protein"],
+  ["Döner Kebab",215,15,"🍗 Protein"],
+  ["Currywurst",260,12,"🍗 Protein"],
+  ["Bratwurst",297,12,"🍗 Protein"],
+  ["Wiener Würstchen",270,11,"🍗 Protein"],
+  ["Salami",378,20,"🍗 Protein"],
+  ["Schinken (gekocht)",112,18,"🍗 Protein"],
+  ["Schinken (roh)",241,25,"🍗 Protein"],
+  ["Bacon",541,37,"🍗 Protein"],
+  ["Mettwurst",350,15,"🍗 Protein"],
+  ["Lyoner",250,12,"🍗 Protein"],
+  ["Leberwurst",327,14,"🍗 Protein"],
+  ["Kabanossi",380,20,"🍗 Protein"],
+  ["Chorizo",455,24,"🍗 Protein"],
+  ["Hot Dog Wurst",290,11,"🍗 Protein"],
+  ["Lachs",208,20,"🍗 Protein"],
+  ["Räucherlachs",181,18,"🍗 Protein"],
+  ["Thunfisch (Wasser)",116,26,"🍗 Protein"],
+  ["Thunfisch (Öl)",190,25,"🍗 Protein"],
+  ["Forelle",119,20,"🍗 Protein"],
+  ["Kabeljau",82,18,"🍗 Protein"],
+  ["Seelachs",81,18,"🍗 Protein"],
+  ["Hering",158,18,"🍗 Protein"],
+  ["Makrele",205,19,"🍗 Protein"],
+  ["Scholle",86,17,"🍗 Protein"],
+  ["Pangasius",90,15,"🍗 Protein"],
+  ["Garnelen",99,24,"🍗 Protein"],
+  ["Tintenfisch",92,16,"🍗 Protein"],
+  ["Muscheln",86,12,"🍗 Protein"],
+  ["Fischstäbchen",195,12,"🍗 Protein"],
+  ["Surimi",95,8,"🍗 Protein"],
+  ["Matjes",215,16,"🍗 Protein"],
+  ["Sardinen (Öl)",208,25,"🍗 Protein"],
+  ["Magerquark",67,12,"🥛 Milchprodukte"],
+  ["Speisequark 20%",109,12,"🥛 Milchprodukte"],
+  ["Speisequark 40%",160,11,"🥛 Milchprodukte"],
+  ["Skyr",63,11,"🥛 Milchprodukte"],
+  ["Skyr (Vanille)",75,9,"🥛 Milchprodukte"],
+  ["Griechischer Joghurt 2%",59,10,"🥛 Milchprodukte"],
+  ["Griechischer Joghurt 10%",133,5.5,"🥛 Milchprodukte"],
+  ["Naturjoghurt 1,5%",47,4.8,"🥛 Milchprodukte"],
+  ["Naturjoghurt 3,5%",65,3.5,"🥛 Milchprodukte"],
+  ["Fruchtjoghurt",95,3.5,"🥛 Milchprodukte"],
+  ["Hüttenkäse",98,12,"🥛 Milchprodukte"],
+  ["Frischkäse",253,6,"🥛 Milchprodukte"],
+  ["Frischkäse (light)",146,9,"🥛 Milchprodukte"],
+  ["Milch 1,5%",47,3.4,"🥛 Milchprodukte"],
+  ["Milch 3,5%",64,3.3,"🥛 Milchprodukte"],
+  ["Buttermilch",37,3.5,"🥛 Milchprodukte"],
+  ["Kefir",52,3.3,"🥛 Milchprodukte"],
+  ["Sahne 30%",292,2.4,"🥛 Milchprodukte"],
+  ["Schmand",237,3,"🥛 Milchprodukte"],
+  ["Crème fraîche",292,2.4,"🥛 Milchprodukte"],
+  ["Saure Sahne",115,3,"🥛 Milchprodukte"],
+  ["Kondensmilch",134,7,"🥛 Milchprodukte"],
+  ["Gouda",356,25,"🥛 Milchprodukte"],
+  ["Gouda (jung)",356,25,"🥛 Milchprodukte"],
+  ["Edamer",336,26,"🥛 Milchprodukte"],
+  ["Emmentaler",380,28,"🥛 Milchprodukte"],
+  ["Mozzarella",254,18,"🥛 Milchprodukte"],
+  ["Mozzarella (light)",165,19,"🥛 Milchprodukte"],
+  ["Feta",264,14,"🥛 Milchprodukte"],
+  ["Parmesan",392,36,"🥛 Milchprodukte"],
+  ["Camembert",299,20,"🥛 Milchprodukte"],
+  ["Brie",334,18,"🥛 Milchprodukte"],
+  ["Frischkäse Harzer",125,30,"🥛 Milchprodukte"],
+  ["Bergkäse",401,29,"🥛 Milchprodukte"],
+  ["Ricotta",174,11,"🥛 Milchprodukte"],
+  ["Mascarpone",412,4.6,"🥛 Milchprodukte"],
+  ["Cheddar",402,25,"🥛 Milchprodukte"],
+  ["Schmelzkäse",250,15,"🥛 Milchprodukte"],
+  ["Quark-Riegel",170,15,"🥛 Milchprodukte"],
+  ["Proteinpudding",75,6.5,"🥛 Milchprodukte"],
+  ["Milchreis",130,3.5,"🥛 Milchprodukte"],
+  ["Vollkornbrot",217,7,"🍞 Kohlenhydrate"],
+  ["Mischbrot",230,7,"🍞 Kohlenhydrate"],
+  ["Roggenbrot",207,6,"🍞 Kohlenhydrate"],
+  ["Toastbrot",273,9,"🍞 Kohlenhydrate"],
+  ["Vollkorntoast",245,9,"🍞 Kohlenhydrate"],
+  ["Brötchen",265,8,"🍞 Kohlenhydrate"],
+  ["Vollkornbrötchen",240,9,"🍞 Kohlenhydrate"],
+  ["Laugenbrezel",295,9,"🍞 Kohlenhydrate"],
+  ["Croissant",406,8,"🍞 Kohlenhydrate"],
+  ["Baguette",271,9,"🍞 Kohlenhydrate"],
+  ["Knäckebrot",335,10,"🍞 Kohlenhydrate"],
+  ["Zwieback",380,10,"🍞 Kohlenhydrate"],
+  ["Pumpernickel",185,5,"🍞 Kohlenhydrate"],
+  ["Pita-Brot",275,9,"🍞 Kohlenhydrate"],
+  ["Tortilla-Wrap",312,8,"🍞 Kohlenhydrate"],
+  ["Naan-Brot",310,9,"🍞 Kohlenhydrate"],
+  ["Brötchen mit Käse",320,13,"🍞 Kohlenhydrate"],
+  ["Rosinenbrötchen",295,8,"🍞 Kohlenhydrate"],
+  ["Haferflocken",372,13,"🍞 Kohlenhydrate"],
+  ["Haferflocken (zart)",372,13,"🍞 Kohlenhydrate"],
+  ["Müsli",360,10,"🍞 Kohlenhydrate"],
+  ["Knuspermüsli/Granola",450,9,"🍞 Kohlenhydrate"],
+  ["Cornflakes",357,7,"🍞 Kohlenhydrate"],
+  ["Schokomüsli",420,8,"🍞 Kohlenhydrate"],
+  ["Porridge (gekocht)",71,2.4,"🍞 Kohlenhydrate"],
+  ["Reis, gekocht",130,2.7,"🍞 Kohlenhydrate"],
+  ["Reis, roh",350,7,"🍞 Kohlenhydrate"],
+  ["Vollkornreis, gekocht",111,2.6,"🍞 Kohlenhydrate"],
+  ["Basmatireis, gekocht",120,3,"🍞 Kohlenhydrate"],
+  ["Risotto",166,3.5,"🍞 Kohlenhydrate"],
+  ["Nudeln, gekocht",158,5.8,"🍞 Kohlenhydrate"],
+  ["Vollkornnudeln, gekocht",149,5.5,"🍞 Kohlenhydrate"],
+  ["Spaghetti, gekocht",158,5.8,"🍞 Kohlenhydrate"],
+  ["Tortellini",260,11,"🍞 Kohlenhydrate"],
+  ["Gnocchi",170,4,"🍞 Kohlenhydrate"],
+  ["Spätzle",214,7,"🍞 Kohlenhydrate"],
+  ["Kartoffeln, gekocht",77,2,"🍞 Kohlenhydrate"],
+  ["Salzkartoffeln",70,2,"🍞 Kohlenhydrate"],
+  ["Bratkartoffeln",150,2.5,"🍞 Kohlenhydrate"],
+  ["Kartoffelpüree",83,2,"🍞 Kohlenhydrate"],
+  ["Pommes frites",312,3.4,"🍞 Kohlenhydrate"],
+  ["Kroketten",260,3.5,"🍞 Kohlenhydrate"],
+  ["Süßkartoffel",86,1.6,"🍞 Kohlenhydrate"],
+  ["Couscous, gekocht",112,3.8,"🍞 Kohlenhydrate"],
+  ["Bulgur, gekocht",83,3,"🍞 Kohlenhydrate"],
+  ["Quinoa, gekocht",120,4.4,"🍞 Kohlenhydrate"],
+  ["Hirse, gekocht",119,3.5,"🍞 Kohlenhydrate"],
+  ["Linsen, gekocht",116,9,"🍞 Kohlenhydrate"],
+  ["Rote Linsen, gekocht",116,9,"🍞 Kohlenhydrate"],
+  ["Kichererbsen, gekocht",164,9,"🍞 Kohlenhydrate"],
+  ["Kidneybohnen",127,8.7,"🍞 Kohlenhydrate"],
+  ["Weiße Bohnen",110,7,"🍞 Kohlenhydrate"],
+  ["Erbsen",81,5.4,"🍞 Kohlenhydrate"],
+  ["Mais (Dose)",86,3.3,"🍞 Kohlenhydrate"],
+  ["Polenta",85,2,"🍞 Kohlenhydrate"],
+  ["Banane",89,1.1,"🍎 Obst"],
+  ["Apfel",54,0.3,"🍎 Obst"],
+  ["Birne",57,0.4,"🍎 Obst"],
+  ["Orange",47,0.9,"🍎 Obst"],
+  ["Mandarine",50,0.7,"🍎 Obst"],
+  ["Clementine",47,0.9,"🍎 Obst"],
+  ["Zitrone",29,1.1,"🍎 Obst"],
+  ["Grapefruit",42,0.8,"🍎 Obst"],
+  ["Erdbeeren",32,0.7,"🍎 Obst"],
+  ["Heidelbeeren",42,0.7,"🍎 Obst"],
+  ["Himbeeren",35,1.2,"🍎 Obst"],
+  ["Brombeeren",36,1.4,"🍎 Obst"],
+  ["Johannisbeeren",43,1.4,"🍎 Obst"],
+  ["Kirschen",63,1,"🍎 Obst"],
+  ["Weintrauben",67,0.6,"🍎 Obst"],
+  ["Kiwi",53,1.1,"🍎 Obst"],
+  ["Mango",70,0.8,"🍎 Obst"],
+  ["Ananas",57,0.5,"🍎 Obst"],
+  ["Wassermelone",30,0.6,"🍎 Obst"],
+  ["Honigmelone",54,0.8,"🍎 Obst"],
+  ["Pfirsich",39,0.9,"🍎 Obst"],
+  ["Nektarine",44,1.1,"🍎 Obst"],
+  ["Aprikose",44,1.4,"🍎 Obst"],
+  ["Pflaume",46,0.7,"🍎 Obst"],
+  ["Feige (frisch)",74,0.8,"🍎 Obst"],
+  ["Granatapfel",83,1.7,"🍎 Obst"],
+  ["Papaya",43,0.5,"🍎 Obst"],
+  ["Datteln",282,2.5,"🍎 Obst"],
+  ["Rosinen",299,3,"🍎 Obst"],
+  ["Trockenpflaumen",240,2.2,"🍎 Obst"],
+  ["Apfelmus",47,0.3,"🍎 Obst"],
+  ["Obstsalat",60,0.7,"🍎 Obst"],
+  ["Brokkoli",34,2.8,"🥦 Gemüse"],
+  ["Blumenkohl",25,1.9,"🥦 Gemüse"],
+  ["Spinat",23,2.9,"🥦 Gemüse"],
+  ["Tomate",18,0.9,"🥦 Gemüse"],
+  ["Kirschtomaten",18,0.9,"🥦 Gemüse"],
+  ["Gurke",12,0.6,"🥦 Gemüse"],
+  ["Paprika",31,1,"🥦 Gemüse"],
+  ["Karotte",41,0.9,"🥦 Gemüse"],
+  ["Zucchini",17,1.2,"🥦 Gemüse"],
+  ["Aubergine",25,1,"🥦 Gemüse"],
+  ["Champignons",22,3.1,"🥦 Gemüse"],
+  ["Zwiebel",40,1.1,"🥦 Gemüse"],
+  ["Knoblauch",149,6.4,"🥦 Gemüse"],
+  ["Kopfsalat",14,1.4,"🥦 Gemüse"],
+  ["Eisbergsalat",14,0.9,"🥦 Gemüse"],
+  ["Rucola",25,2.6,"🥦 Gemüse"],
+  ["Feldsalat",14,1.8,"🥦 Gemüse"],
+  ["Grünkohl",49,4.3,"🥦 Gemüse"],
+  ["Rosenkohl",43,3.4,"🥦 Gemüse"],
+  ["Weißkohl",25,1.3,"🥦 Gemüse"],
+  ["Rotkohl",29,1.5,"🥦 Gemüse"],
+  ["Sauerkraut",19,1.5,"🥦 Gemüse"],
+  ["Sellerie",16,0.7,"🥦 Gemüse"],
+  ["Lauch/Porree",29,2,"🥦 Gemüse"],
+  ["Fenchel",23,1.2,"🥦 Gemüse"],
+  ["Spargel",18,2.2,"🥦 Gemüse"],
+  ["Kürbis",26,1,"🥦 Gemüse"],
+  ["Rote Bete",43,1.6,"🥦 Gemüse"],
+  ["Radieschen",16,1.1,"🥦 Gemüse"],
+  ["Mais (Kolben)",86,3.3,"🥦 Gemüse"],
+  ["Bohnen (grün)",31,1.8,"🥦 Gemüse"],
+  ["Pilze",22,3,"🥦 Gemüse"],
+  ["Oliven (grün)",145,1,"🥦 Gemüse"],
+  ["Avocado",160,2,"🥑 Fette"],
+  ["Gemüsesuppe",40,1.5,"🥦 Gemüse"],
+  ["Ratatouille",55,1.5,"🥦 Gemüse"],
+  ["Olivenöl",884,0,"🥑 Fette"],
+  ["Rapsöl",884,0,"🥑 Fette"],
+  ["Sonnenblumenöl",884,0,"🥑 Fette"],
+  ["Kokosöl",862,0,"🥑 Fette"],
+  ["Butter",717,0.7,"🥑 Fette"],
+  ["Margarine",720,0.2,"🥑 Fette"],
+  ["Erdnussbutter",588,25,"🥑 Fette"],
+  ["Mandelmus",614,21,"🥑 Fette"],
+  ["Mandeln",579,21,"🥑 Fette"],
+  ["Walnüsse",654,15,"🥑 Fette"],
+  ["Cashewkerne",553,18,"🥑 Fette"],
+  ["Haselnüsse",628,15,"🥑 Fette"],
+  ["Pistazien",560,20,"🥑 Fette"],
+  ["Erdnüsse",567,26,"🥑 Fette"],
+  ["Paranüsse",656,14,"🥑 Fette"],
+  ["Macadamia",718,8,"🥑 Fette"],
+  ["Sonnenblumenkerne",584,21,"🥑 Fette"],
+  ["Kürbiskerne",559,30,"🥑 Fette"],
+  ["Leinsamen",534,18,"🥑 Fette"],
+  ["Chiasamen",486,17,"🥑 Fette"],
+  ["Sesam",573,18,"🥑 Fette"],
+  ["Kokosraspeln",660,7,"🥑 Fette"],
+  ["Tahini",595,17,"🥑 Fette"],
+  ["Pinienkerne",673,14,"🥑 Fette"],
+  ["Tofu",127,15,"🍗 Protein"],
+  ["Räuchertofu",150,16,"🍗 Protein"],
+  ["Tempeh",193,19,"🍗 Protein"],
+  ["Seitan",157,25,"🍗 Protein"],
+  ["Sojaschnetzel (trocken)",345,50,"🍗 Protein"],
+  ["Falafel",333,13,"🍗 Protein"],
+  ["Hummus",177,8,"🍗 Protein"],
+  ["Sojamilch",54,3.3,"🥛 Milchprodukte"],
+  ["Hafermilch",46,1,"🥛 Milchprodukte"],
+  ["Mandelmilch",24,0.5,"🥛 Milchprodukte"],
+  ["Kokosmilch",197,2,"🥛 Milchprodukte"],
+  ["Veggie-Burger",200,18,"🍗 Protein"],
+  ["Veganer Käse",280,1,"🥛 Milchprodukte"],
+  ["Sojajoghurt",50,4,"🥛 Milchprodukte"],
+  ["Schokolade (Vollmilch)",535,7,"🍰 Snacks/Süßes"],
+  ["Zartbitterschokolade 70%",598,8,"🍰 Snacks/Süßes"],
+  ["Weiße Schokolade",539,6,"🍰 Snacks/Süßes"],
+  ["Nutella",539,6,"🍰 Snacks/Süßes"],
+  ["Marmelade",278,0.4,"🍰 Snacks/Süßes"],
+  ["Honig",304,0.3,"🍰 Snacks/Süßes"],
+  ["Ahornsirup",260,0,"🍰 Snacks/Süßes"],
+  ["Chips",536,6,"🍰 Snacks/Süßes"],
+  ["Salzstangen",350,10,"🍰 Snacks/Süßes"],
+  ["Erdnussflips",534,15,"🍰 Snacks/Süßes"],
+  ["Popcorn",387,12,"🍰 Snacks/Süßes"],
+  ["Gummibärchen",343,7,"🍰 Snacks/Süßes"],
+  ["Lakritz",325,3,"🍰 Snacks/Süßes"],
+  ["Kekse",480,6,"🍰 Snacks/Süßes"],
+  ["Butterkekse",450,7,"🍰 Snacks/Süßes"],
+  ["Schokokekse",490,5,"🍰 Snacks/Süßes"],
+  ["Waffeln",420,7,"🍰 Snacks/Süßes"],
+  ["Donut",452,5,"🍰 Snacks/Süßes"],
+  ["Muffin",380,5,"🍰 Snacks/Süßes"],
+  ["Käsekuchen",280,6,"🍰 Snacks/Süßes"],
+  ["Apfelkuchen",250,3,"🍰 Snacks/Süßes"],
+  ["Schokokuchen",370,5,"🍰 Snacks/Süßes"],
+  ["Eiscreme",207,3.5,"🍰 Snacks/Süßes"],
+  ["Vanilleeis",207,3.5,"🍰 Snacks/Süßes"],
+  ["Wassereis",80,0,"🍰 Snacks/Süßes"],
+  ["Pudding (Schoko)",120,3,"🍰 Snacks/Süßes"],
+  ["Tiramisu",300,5,"🍰 Snacks/Süßes"],
+  ["Proteinriegel",350,33,"🍰 Snacks/Süßes"],
+  ["Müsliriegel",450,6,"🍰 Snacks/Süßes"],
+  ["Schokoriegel (Mars)",450,4,"🍰 Snacks/Süßes"],
+  ["Snickers",488,8,"🍰 Snacks/Süßes"],
+  ["Kinderriegel",566,8,"🍰 Snacks/Süßes"],
+  ["Pralinen",520,5,"🍰 Snacks/Süßes"],
+  ["Marshmallows",318,4,"🍰 Snacks/Süßes"],
+  ["Zucker",405,0,"🍰 Snacks/Süßes"],
+  ["Brauner Zucker",380,0,"🍰 Snacks/Süßes"],
+  ["Wasser",0,0,"🥤 Getränke"],
+  ["Mineralwasser",0,0,"🥤 Getränke"],
+  ["Cola",42,0,"🥤 Getränke"],
+  ["Cola Zero",0,0,"🥤 Getränke"],
+  ["Limonade",45,0,"🥤 Getränke"],
+  ["Eistee",30,0,"🥤 Getränke"],
+  ["Orangensaft",45,0.7,"🥤 Getränke"],
+  ["Apfelsaft",46,0.1,"🥤 Getränke"],
+  ["Apfelsaftschorle",24,0,"🥤 Getränke"],
+  ["Multivitaminsaft",54,0.5,"🥤 Getränke"],
+  ["Smoothie",60,1,"🥤 Getränke"],
+  ["Energydrink",45,0,"🥤 Getränke"],
+  ["Bier",43,0.5,"🥤 Getränke"],
+  ["Pils",42,0.5,"🥤 Getränke"],
+  ["Weizenbier",45,0.5,"🥤 Getränke"],
+  ["Radler",40,0.3,"🥤 Getränke"],
+  ["Wein, rot",85,0.1,"🥤 Getränke"],
+  ["Wein, weiß",82,0.1,"🥤 Getränke"],
+  ["Sekt",80,0.2,"🥤 Getränke"],
+  ["Wodka",231,0,"🥤 Getränke"],
+  ["Whisky",250,0,"🥤 Getränke"],
+  ["Aperol Spritz",110,0,"🥤 Getränke"],
+  ["Kaffee (schwarz)",2,0.1,"🥤 Getränke"],
+  ["Espresso",2,0.1,"🥤 Getränke"],
+  ["Cappuccino",37,1.9,"🥤 Getränke"],
+  ["Latte Macchiato",54,3,"🥤 Getränke"],
+  ["Milchkaffee",42,2.5,"🥤 Getränke"],
+  ["Tee (ungesüßt)",1,0,"🥤 Getränke"],
+  ["Kakao (mit Milch)",80,3.5,"🥤 Getränke"],
+  ["Proteinshake (Wasser)",110,22,"🥤 Getränke"],
+  ["Pizza Margherita",266,11,"🍞 Kohlenhydrate"],
+  ["Pizza Salami",290,12,"🍞 Kohlenhydrate"],
+  ["Pizza Funghi",240,10,"🍞 Kohlenhydrate"],
+  ["Lasagne",130,7,"🍞 Kohlenhydrate"],
+  ["Spaghetti Bolognese",130,6,"🍞 Kohlenhydrate"],
+  ["Maultaschen",180,9,"🍞 Kohlenhydrate"],
+  ["Hamburger",250,12,"🍗 Protein"],
+  ["Cheeseburger",290,14,"🍗 Protein"],
+  ["Big Mac",257,12,"🍗 Protein"],
+  ["Pommes (McDonald's)",312,3.4,"🍞 Kohlenhydrate"],
+  ["Chicken McNuggets",296,15,"🍗 Protein"],
+  ["Bratkartoffeln mit Speck",170,4,"🍞 Kohlenhydrate"],
+  ["Schnitzel mit Pommes",230,12,"🍗 Protein"],
+  ["Sushi (Maki)",140,4,"🍞 Kohlenhydrate"],
+  ["Frühlingsrolle",200,5,"🍞 Kohlenhydrate"],
+  ["Gebratene Nudeln",180,6,"🍞 Kohlenhydrate"],
+  ["Gebratener Reis",170,4,"🍞 Kohlenhydrate"],
+  ["Chili con Carne",130,8,"🍗 Protein"],
+  ["Gulasch",140,12,"🍗 Protein"],
+  ["Linseneintopf",90,5,"🍞 Kohlenhydrate"],
+  ["Erbsensuppe",80,5,"🍞 Kohlenhydrate"],
+  ["Kartoffelsalat",150,2,"🍞 Kohlenhydrate"],
+  ["Nudelsalat",180,4,"🍞 Kohlenhydrate"],
+  ["Caesar Salad",180,8,"🥦 Gemüse"],
+  ["Griechischer Salat",120,4,"🥦 Gemüse"],
+  ["Ketchup",112,1.2,"🍳 Sonstiges"],
+  ["Mayonnaise",680,1,"🍳 Sonstiges"],
+  ["Senf",100,5,"🍳 Sonstiges"],
+  ["BBQ-Sauce",170,1,"🍳 Sonstiges"],
+  ["Sojasauce",60,8,"🍳 Sonstiges"],
+  ["Tomatensauce",55,2,"🍳 Sonstiges"],
+  ["Pesto",450,5,"🍳 Sonstiges"],
+  ["Salatdressing",250,1,"🍳 Sonstiges"],
+  ["Aioli",600,1,"🍳 Sonstiges"],
+  ["Tzatziki",120,4,"🍳 Sonstiges"],
+  ["Guacamole",150,2,"🍳 Sonstiges"],
+  ["Salsa",36,1.5,"🍳 Sonstiges"],
+  ["Brühe (Gemüse)",10,0.5,"🍳 Sonstiges"],
+  ["Gemüsebrühe (Würfel)",200,10,"🍳 Sonstiges"],
+  ["Hefeflocken",350,45,"🍳 Sonstiges"],
+  ["Backpulver",80,0,"🍳 Sonstiges"],
+  ["Mehl (Weizen)",348,10,"🍞 Kohlenhydrate"],
+  ["Vollkornmehl",340,12,"🍞 Kohlenhydrate"],
+  ["Speisestärke",350,0.3,"🍞 Kohlenhydrate"],
+  ["Gelatine",335,84,"🍳 Sonstiges"],
+  ["Salz",0,0,"🍳 Sonstiges"],
+  ["Pfeffer",251,10,"🍳 Sonstiges"],
+  ["Hähnchen-Innenfilet",165,31,"🍗 Protein"],
+  ["Hähnchen-Geschnetzeltes",110,22,"🍗 Protein"],
+  ["Hähnchenkeule (mit Haut)",215,18,"🍗 Protein"],
+  ["Putengeschnetzeltes",105,24,"🍗 Protein"],
+  ["Putenbrustaufschnitt",100,20,"🍗 Protein"],
+  ["Hähnchenaufschnitt",95,21,"🍗 Protein"],
+  ["Rinderbraten",180,28,"🍗 Protein"],
+  ["Rinderrouladen",170,22,"🍗 Protein"],
+  ["Tafelspitz",150,22,"🍗 Protein"],
+  ["Ochsenschwanz",260,16,"🍗 Protein"],
+  ["Kalbsschnitzel",110,21,"🍗 Protein"],
+  ["Kalbsleber",130,20,"🍗 Protein"],
+  ["Rinderleber",135,20,"🍗 Protein"],
+  ["Schweinekotelett",230,18,"🍗 Protein"],
+  ["Schweinemedaillons",143,21,"🍗 Protein"],
+  ["Spareribs",290,18,"🍗 Protein"],
+  ["Eisbein",230,18,"🍗 Protein"],
+  ["Hackbraten",230,16,"🍗 Protein"],
+  ["Königsberger Klopse",140,9,"🍗 Protein"],
+  ["Cevapcici",240,16,"🍗 Protein"],
+  ["Hähnchen-Döner",170,16,"🍗 Protein"],
+  ["Weißwurst",290,11,"🍗 Protein"],
+  ["Blutwurst",380,12,"🍗 Protein"],
+  ["Pfefferbeißer",380,20,"🍗 Protein"],
+  ["Landjäger",430,22,"🍗 Protein"],
+  ["Cabanossi",420,18,"🍗 Protein"],
+  ["Fleischwurst",290,12,"🍗 Protein"],
+  ["Jagdwurst",230,12,"🍗 Protein"],
+  ["Bierschinken",180,15,"🍗 Protein"],
+  ["Mortadella",280,12,"🍗 Protein"],
+  ["Corned Beef",217,26,"🍗 Protein"],
+  ["Pastrami",130,22,"🍗 Protein"],
+  ["Hähnchenwürstchen",170,14,"🍗 Protein"],
+  ["Geflügelwurst",180,14,"🍗 Protein"],
+  ["Mettbrötchen",280,13,"🍗 Protein"],
+  ["Schweinemett",270,17,"🍗 Protein"],
+  ["Sülze",110,12,"🍗 Protein"],
+  ["Hähnchenleber",119,17,"🍗 Protein"],
+  ["Putenkeule",150,20,"🍗 Protein"],
+  ["Lammhackfleisch",282,17,"🍗 Protein"],
+  ["Wildschwein",110,22,"🍗 Protein"],
+  ["Reh",120,21,"🍗 Protein"],
+  ["Hirsch",110,21,"🍗 Protein"],
+  ["Kaninchen",136,21,"🍗 Protein"],
+  ["Strauß",97,22,"🍗 Protein"],
+  ["Zander",83,18,"🍗 Protein"],
+  ["Wels",90,17,"🍗 Protein"],
+  ["Aal",281,15,"🍗 Protein"],
+  ["Karpfen",115,18,"🍗 Protein"],
+  ["Dorade",96,18,"🍗 Protein"],
+  ["Wolfsbarsch",97,18,"🍗 Protein"],
+  ["Heilbutt",103,20,"🍗 Protein"],
+  ["Rotbarsch",94,18,"🍗 Protein"],
+  ["Steinbutt",70,16,"🍗 Protein"],
+  ["Hummer",90,19,"🍗 Protein"],
+  ["Krebsfleisch",87,18,"🍗 Protein"],
+  ["Jakobsmuscheln",88,17,"🍗 Protein"],
+  ["Austern",68,9,"🍗 Protein"],
+  ["Calamari (frittiert)",175,15,"🍗 Protein"],
+  ["Backfisch",230,14,"🍗 Protein"],
+  ["Lachsfilet (geräuchert)",181,18,"🍗 Protein"],
+  ["Thunfischsteak",144,23,"🍗 Protein"],
+  ["Garnelen (paniert)",242,12,"🍗 Protein"],
+  ["Krabben",87,18,"🍗 Protein"],
+  ["Bismarckhering",240,15,"🍗 Protein"],
+  ["Anchovis",210,29,"🍗 Protein"],
+  ["Kaviar",264,25,"🍗 Protein"],
+  ["Fischfrikadelle",180,12,"🍗 Protein"],
+  ["Lachsbrötchen",200,14,"🍞 Kohlenhydrate"],
+  ["Limburger",330,21,"🥛 Milchprodukte"],
+  ["Romadur",280,21,"🥛 Milchprodukte"],
+  ["Tilsiter",340,25,"🥛 Milchprodukte"],
+  ["Butterkäse",370,21,"🥛 Milchprodukte"],
+  ["Gorgonzola",350,19,"🥛 Milchprodukte"],
+  ["Roquefort",369,22,"🥛 Milchprodukte"],
+  ["Blauschimmelkäse",353,21,"🥛 Milchprodukte"],
+  ["Halloumi",321,22,"🥛 Milchprodukte"],
+  ["Raclette-Käse",357,23,"🥛 Milchprodukte"],
+  ["Bergkäse (alt)",410,30,"🥛 Milchprodukte"],
+  ["Appenzeller",403,25,"🥛 Milchprodukte"],
+  ["Gruyère",413,30,"🥛 Milchprodukte"],
+  ["Grana Padano",398,33,"🥛 Milchprodukte"],
+  ["Pecorino",387,32,"🥛 Milchprodukte"],
+  ["Provolone",351,26,"🥛 Milchprodukte"],
+  ["Manchego",398,32,"🥛 Milchprodukte"],
+  ["Ziegenkäse",364,22,"🥛 Milchprodukte"],
+  ["Schafskäse",300,17,"🥛 Milchprodukte"],
+  ["Quark (Sahne)",160,9,"🥛 Milchprodukte"],
+  ["Körniger Frischkäse",98,12,"🥛 Milchprodukte"],
+  ["Kräuterquark",110,10,"🥛 Milchprodukte"],
+  ["Joghurt griechisch 0%",57,10,"🥛 Milchprodukte"],
+  ["Proteinjoghurt",75,10,"🥛 Milchprodukte"],
+  ["Skyr (Erdbeere)",73,9,"🥛 Milchprodukte"],
+  ["Ayran",40,2.5,"🥛 Milchprodukte"],
+  ["Lassi",90,3,"🥛 Milchprodukte"],
+  ["Vanillejoghurt",100,3.4,"🥛 Milchprodukte"],
+  ["Trinkjoghurt",70,3,"🥛 Milchprodukte"],
+  ["Schlagsahne (geschlagen)",257,2,"🥛 Milchprodukte"],
+  ["Kaffeesahne",120,2.8,"🥛 Milchprodukte"],
+  ["Sojasahne",180,3,"🥛 Milchprodukte"],
+  ["Hafersahne",120,1,"🥛 Milchprodukte"],
+  ["Milchschnitte",450,7,"🍰 Snacks/Süßes"],
+  ["Kinderpingui",390,5,"🍰 Snacks/Süßes"],
+  ["Käsesahnetorte",290,5,"🍰 Snacks/Süßes"],
+  ["Quarkbällchen",380,6,"🍰 Snacks/Süßes"],
+  ["Ziegenmilch",69,3.6,"🥛 Milchprodukte"],
+  ["Laktosefreie Milch",47,3.4,"🥛 Milchprodukte"],
+  ["H-Milch 3,5%",64,3.3,"🥛 Milchprodukte"],
+  ["Ciabatta",271,9,"🍞 Kohlenhydrate"],
+  ["Focaccia",290,8,"🍞 Kohlenhydrate"],
+  ["Sonnenblumenbrot",250,9,"🍞 Kohlenhydrate"],
+  ["Dinkelbrot",230,8,"🍞 Kohlenhydrate"],
+  ["Chiabrot",240,9,"🍞 Kohlenhydrate"],
+  ["Mehrkornbrötchen",250,10,"🍞 Kohlenhydrate"],
+  ["Kaisersemmel",265,9,"🍞 Kohlenhydrate"],
+  ["Milchbrötchen",330,8,"🍞 Kohlenhydrate"],
+  ["Hörnchen",420,8,"🍞 Kohlenhydrate"],
+  ["Schokocroissant",470,8,"🍞 Kohlenhydrate"],
+  ["Berliner/Krapfen",360,5,"🍰 Snacks/Süßes"],
+  ["Streuselkuchen",330,5,"🍰 Snacks/Süßes"],
+  ["Bienenstich",350,6,"🍰 Snacks/Süßes"],
+  ["Franzbrötchen",420,6,"🍰 Snacks/Süßes"],
+  ["Nussschnecke",400,8,"🍰 Snacks/Süßes"],
+  ["Quarktasche",290,8,"🍰 Snacks/Süßes"],
+  ["Brezel (Laugen)",340,10,"🍞 Kohlenhydrate"],
+  ["Laugenstange",300,9,"🍞 Kohlenhydrate"],
+  ["Käsebrötchen",330,12,"🍞 Kohlenhydrate"],
+  ["Vollkornknäcke",350,13,"🍞 Kohlenhydrate"],
+  ["Reiswaffeln",387,8,"🍞 Kohlenhydrate"],
+  ["Maiswaffeln",385,7,"🍞 Kohlenhydrate"],
+  ["Cracker",430,9,"🍞 Kohlenhydrate"],
+  ["Grissini",430,12,"🍞 Kohlenhydrate"],
+  ["Pancakes",227,6,"🍞 Kohlenhydrate"],
+  ["Crêpe",180,5,"🍞 Kohlenhydrate"],
+  ["Waffel (belgisch)",410,7,"🍰 Snacks/Süßes"],
+  ["French Toast",230,8,"🍞 Kohlenhydrate"],
+  ["Brötchen (Sesam)",280,9,"🍞 Kohlenhydrate"],
+  ["Bagel",250,10,"🍞 Kohlenhydrate"],
+  ["English Muffin",235,8,"🍞 Kohlenhydrate"],
+  ["Stollen",380,5,"🍰 Snacks/Süßes"],
+  ["Lebkuchen",380,6,"🍰 Snacks/Süßes"],
+  ["Printen",390,5,"🍰 Snacks/Süßes"],
+  ["Spekulatius",480,6,"🍰 Snacks/Süßes"],
+  ["Zimtschnecke",340,5,"🍰 Snacks/Süßes"],
+  ["Müsli (Früchte)",350,8,"🍞 Kohlenhydrate"],
+  ["Crunchy Müsli",450,8,"🍞 Kohlenhydrate"],
+  ["Haferkleie",320,17,"🍞 Kohlenhydrate"],
+  ["Weizenkleie",216,16,"🍞 Kohlenhydrate"],
+  ["Cous Cous (trocken)",376,13,"🍞 Kohlenhydrate"],
+  ["Bulgur (trocken)",342,12,"🍞 Kohlenhydrate"],
+  ["Polenta (trocken)",360,8,"🍞 Kohlenhydrate"],
+  ["Grünkern",327,12,"🍞 Kohlenhydrate"],
+  ["Dinkel",338,15,"🍞 Kohlenhydrate"],
+  ["Amaranth",371,14,"🍞 Kohlenhydrate"],
+  ["Buchweizen",343,13,"🍞 Kohlenhydrate"],
+  ["Wildreis",357,15,"🍞 Kohlenhydrate"],
+  ["Jasminreis (gekocht)",129,2.7,"🍞 Kohlenhydrate"],
+  ["Sushi-Reis (gekocht)",140,2.5,"🍞 Kohlenhydrate"],
+  ["Milchreis (gekocht)",130,3.5,"🍞 Kohlenhydrate"],
+  ["Penne (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Fusilli (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Lasagneplatten",352,12,"🍞 Kohlenhydrate"],
+  ["Ravioli (Dose)",100,4,"🍞 Kohlenhydrate"],
+  ["Tortelloni (Käse)",280,11,"🍞 Kohlenhydrate"],
+  ["Glasnudeln (gekocht)",90,0.1,"🍞 Kohlenhydrate"],
+  ["Reisnudeln (gekocht)",109,1,"🍞 Kohlenhydrate"],
+  ["Eiernudeln",368,13,"🍞 Kohlenhydrate"],
+  ["Knödel (Semmel)",180,6,"🍞 Kohlenhydrate"],
+  ["Kartoffelknödel",130,2.5,"🍞 Kohlenhydrate"],
+  ["Schupfnudeln",170,3,"🍞 Kohlenhydrate"],
+  ["Reibekuchen",180,3,"🍞 Kohlenhydrate"],
+  ["Kartoffelpuffer",200,4,"🍞 Kohlenhydrate"],
+  ["Rösti",170,3,"🍞 Kohlenhydrate"],
+  ["Ofenkartoffel",93,2.5,"🍞 Kohlenhydrate"],
+  ["Wedges",180,3,"🍞 Kohlenhydrate"],
+  ["Linsen (rot, trocken)",352,24,"🍞 Kohlenhydrate"],
+  ["Belugalinsen (trocken)",347,24,"🍞 Kohlenhydrate"],
+  ["Schwarze Bohnen",132,9,"🍞 Kohlenhydrate"],
+  ["Limabohnen",115,7,"🍞 Kohlenhydrate"],
+  ["Sojabohnen (gekocht)",141,17,"🍞 Kohlenhydrate"],
+  ["Edamame",121,12,"🍞 Kohlenhydrate"],
+  ["Cranberries (getrocknet)",308,0.2,"🍎 Obst"],
+  ["Goji-Beeren",349,14,"🍎 Obst"],
+  ["Aprikose (getrocknet)",241,3.4,"🍎 Obst"],
+  ["Feige (getrocknet)",249,3.5,"🍎 Obst"],
+  ["Banane (getrocknet)",346,3.9,"🍎 Obst"],
+  ["Apfelringe (getrocknet)",240,1,"🍎 Obst"],
+  ["Mango (getrocknet)",319,2,"🍎 Obst"],
+  ["Ananas (getrocknet)",347,2,"🍎 Obst"],
+  ["Physalis",53,1.9,"🍎 Obst"],
+  ["Litschi",66,0.8,"🍎 Obst"],
+  ["Maracuja",97,2.2,"🍎 Obst"],
+  ["Drachenfrucht",60,1.2,"🍎 Obst"],
+  ["Kaki/Sharon",70,0.6,"🍎 Obst"],
+  ["Quitte",38,0.4,"🍎 Obst"],
+  ["Stachelbeere",44,0.9,"🍎 Obst"],
+  ["Holunderbeere",73,2.6,"🍎 Obst"],
+  ["Preiselbeere",46,0.4,"🍎 Obst"],
+  ["Heidelbeere (TK)",42,0.7,"🍎 Obst"],
+  ["Blutorange",50,1,"🍎 Obst"],
+  ["Pomelo",38,0.8,"🍎 Obst"],
+  ["Kumquat",71,1.9,"🍎 Obst"],
+  ["Limette",30,0.7,"🍎 Obst"],
+  ["Pflaume (getrocknet)",240,2.2,"🍎 Obst"],
+  ["Sultaninen",299,3,"🍎 Obst"],
+  ["Korinthen",283,2.5,"🍎 Obst"],
+  ["Cocktailkirschen",165,0.5,"🍎 Obst"],
+  ["Beerenmix (TK)",40,1,"🍎 Obst"],
+  ["Mango (TK)",60,0.6,"🍎 Obst"],
+  ["Erdbeeren (TK)",32,0.7,"🍎 Obst"],
+  ["Rhabarber",21,0.6,"🍎 Obst"],
+  ["Wassermelone (kernlos)",30,0.6,"🍎 Obst"],
+  ["Galiamelone",36,0.6,"🍎 Obst"],
+  ["Cantaloupe-Melone",34,0.8,"🍎 Obst"],
+  ["Mangold",19,1.8,"🥦 Gemüse"],
+  ["Pak Choi",13,1.5,"🥦 Gemüse"],
+  ["Chinakohl",13,1.2,"🥦 Gemüse"],
+  ["Wirsing",25,2,"🥦 Gemüse"],
+  ["Kohlrabi",27,1.7,"🥦 Gemüse"],
+  ["Pastinake",75,1.2,"🥦 Gemüse"],
+  ["Steckrübe",26,1.1,"🥦 Gemüse"],
+  ["Topinambur",73,2,"🥦 Gemüse"],
+  ["Schwarzwurzel",18,1.4,"🥦 Gemüse"],
+  ["Artischocke",47,3.3,"🥦 Gemüse"],
+  ["Okra",33,1.9,"🥦 Gemüse"],
+  ["Mairübchen",28,1.5,"🥦 Gemüse"],
+  ["Süßkartoffel (gebacken)",90,2,"🥦 Gemüse"],
+  ["Rote Paprika",37,1,"🥦 Gemüse"],
+  ["Gelbe Paprika",27,1,"🥦 Gemüse"],
+  ["Spitzpaprika",31,1,"🥦 Gemüse"],
+  ["Chili (frisch)",40,1.9,"🥦 Gemüse"],
+  ["Jalapeño",29,0.9,"🥦 Gemüse"],
+  ["Ingwer",80,1.8,"🥦 Gemüse"],
+  ["Kurkuma (frisch)",354,8,"🥦 Gemüse"],
+  ["Lauchzwiebeln",32,1.8,"🥦 Gemüse"],
+  ["Schalotte",72,2.5,"🥦 Gemüse"],
+  ["Staudensellerie",16,0.7,"🥦 Gemüse"],
+  ["Knollensellerie",18,1.5,"🥦 Gemüse"],
+  ["Romanesco",25,2,"🥦 Gemüse"],
+  ["Spitzkohl",25,1.5,"🥦 Gemüse"],
+  ["Zuckerschoten",42,2.8,"🥦 Gemüse"],
+  ["Dicke Bohnen",88,8,"🥦 Gemüse"],
+  ["Edamame (Schote)",121,12,"🥦 Gemüse"],
+  ["Kresse",33,2.6,"🥦 Gemüse"],
+  ["Petersilie",53,4.4,"🥦 Gemüse"],
+  ["Basilikum",23,3,"🥦 Gemüse"],
+  ["Dill",43,3.5,"🥦 Gemüse"],
+  ["Schnittlauch",30,3,"🥦 Gemüse"],
+  ["Koriander",23,2.1,"🥦 Gemüse"],
+  ["Minze",44,3.8,"🥦 Gemüse"],
+  ["Sauerkraut (gegart)",19,1.5,"🥦 Gemüse"],
+  ["Rotkohl (Glas)",60,1,"🥦 Gemüse"],
+  ["Gemüsemais (TK)",90,3.3,"🥦 Gemüse"],
+  ["Erbsen (TK)",81,5.4,"🥦 Gemüse"],
+  ["Spinat (TK)",23,2.9,"🥦 Gemüse"],
+  ["Brokkoli (TK)",34,2.8,"🥦 Gemüse"],
+  ["Wokgemüse (TK)",40,2,"🥦 Gemüse"],
+  ["Oliven (schwarz)",350,2,"🥦 Gemüse"],
+  ["Sonnengetr. Tomaten",213,5,"🥦 Gemüse"],
+  ["Eingelegte Gurken",11,0.6,"🥦 Gemüse"],
+  ["Antipasti (eingelegt)",150,2,"🥦 Gemüse"],
+  ["Maiskölbchen",30,2,"🥦 Gemüse"],
+  ["Bambussprossen",27,2.6,"🥦 Gemüse"],
+  ["Kürbiskernöl",884,0,"🥑 Fette"],
+  ["Leinöl",884,0,"🥑 Fette"],
+  ["Walnussöl",884,0,"🥑 Fette"],
+  ["Sesamöl",884,0,"🥑 Fette"],
+  ["Butterschmalz",900,0.2,"🥑 Fette"],
+  ["Ghee",900,0,"🥑 Fette"],
+  ["Schweineschmalz",900,0,"🥑 Fette"],
+  ["Gänseschmalz",900,0,"🥑 Fette"],
+  ["Pekannüsse",691,9,"🥑 Fette"],
+  ["Macadamiamus",720,8,"🥑 Fette"],
+  ["Cashewmus",600,18,"🥑 Fette"],
+  ["Haselnussmus",640,15,"🥑 Fette"],
+  ["Erdnussmus (ungesüßt)",600,28,"🥑 Fette"],
+  ["Hanfsamen",553,32,"🥑 Fette"],
+  ["Mohn",525,24,"🥑 Fette"],
+  ["Flohsamenschalen",21,1.5,"🥑 Fette"],
+  ["Kokoschips",660,7,"🥑 Fette"],
+  ["Studentenfutter",480,15,"🥑 Fette"],
+  ["Nussmischung (gesalzen)",600,20,"🥑 Fette"],
+  ["Erdnüsse (geröstet)",599,26,"🥑 Fette"],
+  ["Cashew (geröstet, gesalzen)",574,18,"🥑 Fette"],
+  ["Mandeln (geröstet)",597,21,"🥑 Fette"],
+  ["Pistazien (geröstet)",569,21,"🥑 Fette"],
+  ["Kokosmilch (light)",73,1,"🥛 Milchprodukte"],
+  ["Kokoscreme",330,3,"🥑 Fette"],
+  ["Sojagranulat (trocken)",345,50,"🍗 Protein"],
+  ["Erbsenprotein-Burger",170,17,"🍗 Protein"],
+  ["Beyond Burger",250,18,"🍗 Protein"],
+  ["Vegane Bratwurst",230,13,"🍗 Protein"],
+  ["Tofu (geräuchert)",150,16,"🍗 Protein"],
+  ["Tofu (natur, gebraten)",145,16,"🍗 Protein"],
+  ["Sojaschnetzel (gegart)",110,16,"🍗 Protein"],
+  ["Lupinenschnetzel",110,20,"🍗 Protein"],
+  ["Jackfruit",95,1.5,"🍗 Protein"],
+  ["Veggie-Hack",115,15,"🍗 Protein"],
+  ["Veganes Schnitzel",220,15,"🍗 Protein"],
+  ["Vegane Frikadelle",200,12,"🍗 Protein"],
+  ["Hummus (Paprika)",180,7,"🍗 Protein"],
+  ["Kichererbsenmehl",387,22,"🍞 Kohlenhydrate"],
+  ["Sojajoghurt (Frucht)",75,3.5,"🥛 Milchprodukte"],
+  ["Kokosjoghurt",180,1,"🥛 Milchprodukte"],
+  ["Mandeljoghurt",60,1,"🥛 Milchprodukte"],
+  ["Erbsenmilch",40,3,"🥛 Milchprodukte"],
+  ["Reismilch",47,0.3,"🥛 Milchprodukte"],
+  ["Veganer Aufschnitt",180,12,"🍗 Protein"],
+  ["Veganer Frischkäse",250,2,"🥛 Milchprodukte"],
+  ["Cashew-Käse",290,6,"🥛 Milchprodukte"],
+  ["Tofu-Rührei",120,11,"🍗 Protein"],
+  ["Räuchertempeh",200,20,"🍗 Protein"],
+  ["Edamame-Nudeln (gekocht)",120,12,"🍞 Kohlenhydrate"],
+  ["Erdnussbutter (crunchy)",588,25,"🥑 Fette"],
+  ["Schokocreme (vegan)",530,5,"🍰 Snacks/Süßes"],
+  ["Marzipan",450,9,"🍰 Snacks/Süßes"],
+  ["Nuss-Nougat-Creme",540,6,"🍰 Snacks/Süßes"],
+  ["Apfelkraut",290,0.5,"🍰 Snacks/Süßes"],
+  ["Rübensirup",295,2,"🍰 Snacks/Süßes"],
+  ["Agavendicksaft",310,0,"🍰 Snacks/Süßes"],
+  ["Pflaumenmus",170,1,"🍰 Snacks/Süßes"],
+  ["Erdbeermarmelade",260,0.4,"🍰 Snacks/Süßes"],
+  ["Aprikosenkonfitüre",260,0.4,"🍰 Snacks/Süßes"],
+  ["Frischkäse (Kräuter)",230,6,"🥛 Milchprodukte"],
+  ["Leberwurst (fein)",330,13,"🍗 Protein"],
+  ["Teewurst",420,12,"🍗 Protein"],
+  ["Streichwurst (vegan)",250,5,"🍗 Protein"],
+  ["Käseaufstrich",260,8,"🥛 Milchprodukte"],
+  ["Avocadocreme",170,2,"🥑 Fette"],
+  ["Müsliriegel (Schoko)",450,6,"🍰 Snacks/Süßes"],
+  ["Frühstücksflakes (Zimt)",380,6,"🍞 Kohlenhydrate"],
+  ["Schokopops",385,6,"🍞 Kohlenhydrate"],
+  ["Honigpops",380,6,"🍞 Kohlenhydrate"],
+  ["Weetabix",362,12,"🍞 Kohlenhydrate"],
+  ["Müsli (Protein)",380,25,"🍞 Kohlenhydrate"],
+  ["Milka Schokolade",534,6,"🍰 Snacks/Süßes"],
+  ["Ritter Sport (Vollmilch)",556,7,"🍰 Snacks/Süßes"],
+  ["Toblerone",525,5,"🍰 Snacks/Süßes"],
+  ["Kinder Schokolade",566,8,"🍰 Snacks/Süßes"],
+  ["Kinder Bueno",571,8,"🍰 Snacks/Süßes"],
+  ["Hanuta",540,7,"🍰 Snacks/Süßes"],
+  ["Duplo",560,6,"🍰 Snacks/Süßes"],
+  ["Twix",495,4,"🍰 Snacks/Süßes"],
+  ["Bounty",473,4,"🍰 Snacks/Süßes"],
+  ["KitKat",518,6,"🍰 Snacks/Süßes"],
+  ["Lion",490,5,"🍰 Snacks/Süßes"],
+  ["M&Ms",492,4,"🍰 Snacks/Süßes"],
+  ["Smarties",463,4,"🍰 Snacks/Süßes"],
+  ["Maltesers",505,7,"🍰 Snacks/Süßes"],
+  ["Toffifee",530,5,"🍰 Snacks/Süßes"],
+  ["Merci",560,6,"🍰 Snacks/Süßes"],
+  ["Raffaello",615,7,"🍰 Snacks/Süßes"],
+  ["Ferrero Rocher",580,8,"🍰 Snacks/Süßes"],
+  ["Gummibärchen (Haribo)",343,7,"🍰 Snacks/Süßes"],
+  ["Color-Rado",340,4,"🍰 Snacks/Süßes"],
+  ["Weingummi",330,5,"🍰 Snacks/Süßes"],
+  ["Schaumküsse",380,3,"🍰 Snacks/Süßes"],
+  ["Lakritzschnecken",340,3,"🍰 Snacks/Süßes"],
+  ["Fruchtgummi",340,5,"🍰 Snacks/Süßes"],
+  ["Brausepulver",380,0,"🍰 Snacks/Süßes"],
+  ["Salzbrezeln",380,10,"🍰 Snacks/Süßes"],
+  ["Tortilla-Chips",490,7,"🍰 Snacks/Süßes"],
+  ["Nachos",490,7,"🍰 Snacks/Süßes"],
+  ["Käsegebäck",500,10,"🍰 Snacks/Süßes"],
+  ["Cracker (Tuc)",480,8,"🍰 Snacks/Süßes"],
+  ["Erdnusslocken",534,15,"🍰 Snacks/Süßes"],
+  ["Flips",520,8,"🍰 Snacks/Süßes"],
+  ["Reiscracker",400,7,"🍰 Snacks/Süßes"],
+  ["Mikado",490,8,"🍰 Snacks/Süßes"],
+  ["Oreo-Kekse",480,5,"🍰 Snacks/Süßes"],
+  ["Leibniz-Keks",450,7,"🍰 Snacks/Süßes"],
+  ["Prinzenrolle",490,5,"🍰 Snacks/Süßes"],
+  ["Spritzgebäck",500,6,"🍰 Snacks/Süßes"],
+  ["Amerikaner",350,5,"🍰 Snacks/Süßes"],
+  ["Cake Pop",400,4,"🍰 Snacks/Süßes"],
+  ["Brownie",470,6,"🍰 Snacks/Süßes"],
+  ["Mochi",230,2,"🍰 Snacks/Süßes"],
+  ["Macaron",400,5,"🍰 Snacks/Süßes"],
+  ["Eclair",260,5,"🍰 Snacks/Süßes"],
+  ["Profiterole",330,6,"🍰 Snacks/Süßes"],
+  ["Magnum (Eis)",290,3.5,"🍰 Snacks/Süßes"],
+  ["Cornetto",230,3,"🍰 Snacks/Süßes"],
+  ["Eis am Stiel",120,1,"🍰 Snacks/Süßes"],
+  ["Frozen Yogurt",130,4,"🍰 Snacks/Süßes"],
+  ["Ben & Jerry's",250,4,"🍰 Snacks/Süßes"],
+  ["Sorbet",120,0.3,"🍰 Snacks/Süßes"],
+  ["Sahneeis",230,4,"🍰 Snacks/Süßes"],
+  ["Spaghettieis",200,3,"🍰 Snacks/Süßes"],
+  ["Fanta",46,0,"🥤 Getränke"],
+  ["Sprite",44,0,"🥤 Getränke"],
+  ["Spezi",43,0,"🥤 Getränke"],
+  ["Mezzo Mix",43,0,"🥤 Getränke"],
+  ["Bitter Lemon",50,0,"🥤 Getränke"],
+  ["Tonic Water",34,0,"🥤 Getränke"],
+  ["Ginger Ale",38,0,"🥤 Getränke"],
+  ["Red Bull",45,0,"🥤 Getränke"],
+  ["Monster Energy",47,0,"🥤 Getränke"],
+  ["Eistee Pfirsich",28,0,"🥤 Getränke"],
+  ["Eistee Zitrone",26,0,"🥤 Getränke"],
+  ["Vitaminwasser",20,0,"🥤 Getränke"],
+  ["Kokoswasser",19,0.7,"🥤 Getränke"],
+  ["Saftschorle",24,0.2,"🥤 Getränke"],
+  ["Traubensaft",67,0.6,"🥤 Getränke"],
+  ["Kirschsaft",54,0.5,"🥤 Getränke"],
+  ["Tomatensaft",17,0.8,"🥤 Getränke"],
+  ["Karottensaft",27,0.7,"🥤 Getränke"],
+  ["Grüner Smoothie",45,1.2,"🥤 Getränke"],
+  ["Mango-Smoothie",70,0.8,"🥤 Getränke"],
+  ["Bananensaft",75,1,"🥤 Getränke"],
+  ["Buttermilch (Frucht)",60,3,"🥤 Getränke"],
+  ["Trinkschokolade",90,3.5,"🥤 Getränke"],
+  ["Eiskaffee",70,2,"🥤 Getränke"],
+  ["Chai Latte",90,3,"🥤 Getränke"],
+  ["Matcha Latte",80,3,"🥤 Getränke"],
+  ["Bubble Tea",90,1,"🥤 Getränke"],
+  ["Limoncello",330,0,"🥤 Getränke"],
+  ["Likör (Eierlikör)",270,4,"🥤 Getränke"],
+  ["Gin",263,0,"🥤 Getränke"],
+  ["Rum",231,0,"🥤 Getränke"],
+  ["Tequila",231,0,"🥤 Getränke"],
+  ["Cognac",240,0,"🥤 Getränke"],
+  ["Jägermeister",260,0,"🥤 Getränke"],
+  ["Cocktail (Mojito)",120,0,"🥤 Getränke"],
+  ["Cocktail (Caipirinha)",160,0,"🥤 Getränke"],
+  ["Cocktail (Margarita)",180,0,"🥤 Getränke"],
+  ["Glühwein",110,0,"🥤 Getränke"],
+  ["Alkoholfreies Bier",26,0.4,"🥤 Getränke"],
+  ["Hefeweizen",47,0.6,"🥤 Getränke"],
+  ["Kölsch",42,0.5,"🥤 Getränke"],
+  ["Altbier",44,0.5,"🥤 Getränke"],
+  ["Cidre",49,0.1,"🥤 Getränke"],
+  ["Prosecco",78,0.2,"🥤 Getränke"],
+  ["Champagner",80,0.3,"🥤 Getränke"],
+  ["Eiweißshake (Milch)",90,7,"🥤 Getränke"],
+  ["Kakao (Instant)",375,5,"🥤 Getränke"],
+  ["Ovomaltine",380,6,"🥤 Getränke"],
+  ["Malzbier",43,0.5,"🥤 Getränke"],
+  ["Apfelschorle (light)",10,0,"🥤 Getränke"],
+  ["Saftspritzer",15,0,"🥤 Getränke"],
+  ["Kräutertee",1,0,"🥤 Getränke"],
+  ["Pfefferminztee",1,0,"🥤 Getränke"],
+  ["Pizza Hawaii",230,9,"🍞 Kohlenhydrate"],
+  ["Pizza Quattro Formaggi",290,13,"🍞 Kohlenhydrate"],
+  ["Pizza Tonno",250,11,"🍞 Kohlenhydrate"],
+  ["Pizza Vegetaria",220,9,"🍞 Kohlenhydrate"],
+  ["Calzone",260,11,"🍞 Kohlenhydrate"],
+  ["Flammkuchen",230,7,"🍞 Kohlenhydrate"],
+  ["Pizzabrötchen",280,9,"🍞 Kohlenhydrate"],
+  ["Whopper",230,12,"🍗 Protein"],
+  ["Chicken Burger",250,14,"🍗 Protein"],
+  ["Fischburger",230,11,"🍗 Protein"],
+  ["Veggie Burger (Fast Food)",220,9,"🍗 Protein"],
+  ["Pommes (groß)",312,3.4,"🍞 Kohlenhydrate"],
+  ["Onion Rings",410,5,"🍞 Kohlenhydrate"],
+  ["Chicken Wings (BBQ)",250,22,"🍗 Protein"],
+  ["Mozzarella Sticks",300,12,"🍞 Kohlenhydrate"],
+  ["Burrito",210,8,"🍞 Kohlenhydrate"],
+  ["Quesadilla",270,12,"🍞 Kohlenhydrate"],
+  ["Taco",220,9,"🍞 Kohlenhydrate"],
+  ["Nachos mit Käse",330,8,"🍞 Kohlenhydrate"],
+  ["Enchilada",180,9,"🍞 Kohlenhydrate"],
+  ["Fajita",200,12,"🍞 Kohlenhydrate"],
+  ["Chili Cheese Fries",220,6,"🍞 Kohlenhydrate"],
+  ["Pad Thai",150,7,"🍞 Kohlenhydrate"],
+  ["Gebratener Reis mit Ei",180,5,"🍞 Kohlenhydrate"],
+  ["Frühlingsrolle (vegetarisch)",200,4,"🍞 Kohlenhydrate"],
+  ["Glasnudelsalat",90,3,"🍞 Kohlenhydrate"],
+  ["Sushi (Nigiri)",130,6,"🍞 Kohlenhydrate"],
+  ["Sushi (California Roll)",150,5,"🍞 Kohlenhydrate"],
+  ["Edamame (gesalzen)",121,12,"🥦 Gemüse"],
+  ["Miso-Suppe",40,3,"🍳 Sonstiges"],
+  ["Ramen",120,6,"🍞 Kohlenhydrate"],
+  ["Wan Tan",200,8,"🍞 Kohlenhydrate"],
+  ["Tom Kha Gai",90,5,"🍳 Sonstiges"],
+  ["Curry (rot, mit Reis)",150,5,"🍞 Kohlenhydrate"],
+  ["Butter Chicken",180,12,"🍗 Protein"],
+  ["Tikka Masala",170,11,"🍗 Protein"],
+  ["Dal (Linsencurry)",120,6,"🍞 Kohlenhydrate"],
+  ["Samosa",260,5,"🍞 Kohlenhydrate"],
+  ["Naan mit Knoblauch",320,9,"🍞 Kohlenhydrate"],
+  ["Biryani",180,6,"🍞 Kohlenhydrate"],
+  ["Falafel-Teller",250,10,"🍗 Protein"],
+  ["Shawarma",220,16,"🍗 Protein"],
+  ["Köfte",240,16,"🍗 Protein"],
+  ["Hummus-Teller",180,7,"🍗 Protein"],
+  ["Tabouleh",130,3,"🍞 Kohlenhydrate"],
+  ["Baba Ghanoush",130,2,"🥦 Gemüse"],
+  ["Dolma",150,3,"🍞 Kohlenhydrate"],
+  ["Tzatziki (Beilage)",120,4,"🍳 Sonstiges"],
+  ["Souvlaki",200,18,"🍗 Protein"],
+  ["Moussaka",160,8,"🍞 Kohlenhydrate"],
+  ["Gyros-Teller",215,18,"🍗 Protein"],
+  ["Bifteki",250,16,"🍗 Protein"],
+  ["Paella",170,8,"🍞 Kohlenhydrate"],
+  ["Tortilla Española",180,7,"🍞 Kohlenhydrate"],
+  ["Tapas (gemischt)",200,8,"🍳 Sonstiges"],
+  ["Gazpacho",40,1.5,"🥦 Gemüse"],
+  ["Risotto (Pilze)",150,4,"🍞 Kohlenhydrate"],
+  ["Spaghetti Carbonara",180,8,"🍞 Kohlenhydrate"],
+  ["Penne Arrabiata",150,5,"🍞 Kohlenhydrate"],
+  ["Tortellini Panna",220,9,"🍞 Kohlenhydrate"],
+  ["Gnocchi (Gorgonzola)",200,6,"🍞 Kohlenhydrate"],
+  ["Caprese",180,9,"🥦 Gemüse"],
+  ["Bruschetta",180,5,"🍞 Kohlenhydrate"],
+  ["Vitello Tonnato",180,16,"🍗 Protein"],
+  ["Saltimbocca",180,20,"🍗 Protein"],
+  ["Ossobuco",180,18,"🍗 Protein"],
+  ["Tiramisu (Portion)",300,5,"🍰 Snacks/Süßes"],
+  ["Panna Cotta",250,4,"🍰 Snacks/Süßes"],
+  ["Crème Brûlée",290,5,"🍰 Snacks/Süßes"],
+  ["Apfelstrudel",240,3,"🍰 Snacks/Süßes"],
+  ["Kaiserschmarrn",250,6,"🍞 Kohlenhydrate"],
+  ["Tomatensuppe",40,1.2,"🍳 Sonstiges"],
+  ["Kürbissuppe",50,1.5,"🍳 Sonstiges"],
+  ["Hühnersuppe",45,4,"🍳 Sonstiges"],
+  ["Gulaschsuppe",80,6,"🍳 Sonstiges"],
+  ["Linsensuppe",90,5,"🍞 Kohlenhydrate"],
+  ["Bohnensuppe",95,6,"🍞 Kohlenhydrate"],
+  ["Kartoffelsuppe",70,2,"🍞 Kohlenhydrate"],
+  ["Brokkolisuppe",55,2,"🍳 Sonstiges"],
+  ["Spargelcremesuppe",60,2,"🍳 Sonstiges"],
+  ["Zwiebelsuppe",45,1.5,"🍳 Sonstiges"],
+  ["Minestrone",50,2,"🍳 Sonstiges"],
+  ["Fischsuppe",60,7,"🍗 Protein"],
+  ["Eintopf (Gemüse)",60,3,"🍳 Sonstiges"],
+  ["Pichelsteiner",90,6,"🍳 Sonstiges"],
+  ["Grünkohl mit Pinkel",130,8,"🍗 Protein"],
+  ["Rouladen mit Soße",170,18,"🍗 Protein"],
+  ["Schweinebraten mit Soße",215,22,"🍗 Protein"],
+  ["Sauerbraten",180,22,"🍗 Protein"],
+  ["Schnitzel Wiener Art",240,18,"🍗 Protein"],
+  ["Jägerschnitzel",220,16,"🍗 Protein"],
+  ["Cordon Bleu",260,18,"🍗 Protein"],
+  ["Frikadellen mit Kartoffelsalat",200,12,"🍗 Protein"],
+  ["Bratwurst mit Sauerkraut",220,11,"🍗 Protein"],
+  ["Currywurst mit Pommes",250,9,"🍳 Sonstiges"],
+  ["Kohlrouladen",130,9,"🍗 Protein"],
+  ["Gefüllte Paprika",110,7,"🍗 Protein"],
+  ["Hackbällchen in Tomatensoße",150,10,"🍗 Protein"],
+  ["Geschnetzeltes Zürcher Art",160,16,"🍗 Protein"],
+  ["Rinderbraten mit Klößen",170,15,"🍗 Protein"],
+  ["Hähnchen süß-sauer",140,12,"🍗 Protein"],
+  ["Putengeschnetzeltes Rahm",150,18,"🍗 Protein"],
+  ["Hollandaise",550,2,"🍳 Sonstiges"],
+  ["Béarnaise",520,2,"🍳 Sonstiges"],
+  ["Bratensoße",60,2,"🍳 Sonstiges"],
+  ["Currysoße",110,1,"🍳 Sonstiges"],
+  ["Sweet Chili Sauce",220,0.5,"🍳 Sonstiges"],
+  ["Teriyakisauce",90,3,"🍳 Sonstiges"],
+  ["Austernsauce",51,2,"🍳 Sonstiges"],
+  ["Fischsauce",60,8,"🍳 Sonstiges"],
+  ["Worcestersauce",78,0,"🍳 Sonstiges"],
+  ["Tabasco",12,1,"🍳 Sonstiges"],
+  ["Sriracha",100,2,"🍳 Sonstiges"],
+  ["Remoulade",550,1,"🍳 Sonstiges"],
+  ["Tartar-Sauce",470,1,"🍳 Sonstiges"],
+  ["Joghurtdressing",120,2,"🍳 Sonstiges"],
+  ["Balsamico-Dressing",150,0.5,"🍳 Sonstiges"],
+  ["French Dressing",250,1,"🍳 Sonstiges"],
+  ["Honig-Senf-Sauce",200,2,"🍳 Sonstiges"],
+  ["Knoblauchsauce",350,2,"🍳 Sonstiges"],
+  ["Tomatenmark",90,4.5,"🍳 Sonstiges"],
+  ["Passierte Tomaten",30,1.5,"🍳 Sonstiges"],
+  ["Ajvar",110,1.5,"🍳 Sonstiges"],
+  ["Harissa",90,3,"🍳 Sonstiges"],
+  ["Curry-Paste",120,3,"🍳 Sonstiges"],
+  ["Wasabi",290,5,"🍳 Sonstiges"],
+  ["Meerrettich",60,3,"🍳 Sonstiges"],
+  ["Apfelessig",22,0,"🍳 Sonstiges"],
+  ["Balsamico-Essig",88,0.5,"🍳 Sonstiges"],
+  ["Zitronensaft",22,0.4,"🍳 Sonstiges"],
+  ["Kokosblütenzucker",380,1,"🍰 Snacks/Süßes"],
+  ["Xylit",240,0,"🍰 Snacks/Süßes"],
+  ["Erythrit",0,0,"🍰 Snacks/Süßes"],
+  ["Stevia",0,0,"🍰 Snacks/Süßes"],
+  ["Puderzucker",400,0,"🍰 Snacks/Süßes"],
+  ["Vanillezucker",400,0,"🍰 Snacks/Süßes"],
+  ["Kakaopulver (ungesüßt)",228,20,"🍳 Sonstiges"],
+  ["Backkakao",350,22,"🍳 Sonstiges"],
+  ["Schokostreusel",480,4,"🍰 Snacks/Süßes"],
+  ["Mandelmehl",560,24,"🍞 Kohlenhydrate"],
+  ["Kokosmehl",400,18,"🍞 Kohlenhydrate"],
+  ["Haferflocken (Instant)",372,13,"🍞 Kohlenhydrate"],
+  ["Chiapudding",120,4,"🥛 Milchprodukte"],
+  ["Proteinriegel (Low Carb)",350,40,"🍰 Snacks/Süßes"],
+  ["Eiweißbrot",250,25,"🍞 Kohlenhydrate"],
+  ["Low-Carb-Nudeln (gekocht)",30,4,"🍞 Kohlenhydrate"],
+  ["Konjaknudeln",10,0.1,"🍞 Kohlenhydrate"],
+  ["Blumenkohlreis",25,2,"🥦 Gemüse"],
+  ["Zoodles (Zucchininudeln)",17,1.2,"🥦 Gemüse"],
+  ["Proteinflakes",380,30,"🍞 Kohlenhydrate"],
+  ["Magerquark (Vanille)",75,11,"🥛 Milchprodukte"],
+  ["Hähnchenschnitzel paniert",240,18,"🍗 Protein"],
+  ["Hähnchen-Cordon-Bleu",250,17,"🍗 Protein"],
+  ["Chicken Tenders",260,16,"🍗 Protein"],
+  ["Hähnchenspieß",160,22,"🍗 Protein"],
+  ["Putenspieß",150,22,"🍗 Protein"],
+  ["Schweinespieß",200,18,"🍗 Protein"],
+  ["Schaschlik",180,16,"🍗 Protein"],
+  ["Hähnchen Teriyaki",150,18,"🍗 Protein"],
+  ["Hähnchen Tandoori",160,20,"🍗 Protein"],
+  ["Pulled Pork",200,22,"🍗 Protein"],
+  ["Pulled Chicken",150,25,"🍗 Protein"],
+  ["Brisket",250,24,"🍗 Protein"],
+  ["Beef Jerky",410,55,"🍗 Protein"],
+  ["Trockenfleisch",250,50,"🍗 Protein"],
+  ["Bündnerfleisch",180,33,"🍗 Protein"],
+  ["Schinkenspeck",280,20,"🍗 Protein"],
+  ["Frühstücksspeck",400,12,"🍗 Protein"],
+  ["Kassler Rippchen",170,18,"🍗 Protein"],
+  ["Wammerl",450,12,"🍗 Protein"],
+  ["Hähnchenfrikassee",110,12,"🍗 Protein"],
+  ["Hühnerfrikassee",120,10,"🍗 Protein"],
+  ["Geschnetzeltes (Pute)",150,18,"🍗 Protein"],
+  ["Hackbällchen (IKEA)",230,14,"🍗 Protein"],
+  ["Köttbullar",230,14,"🍗 Protein"],
+  ["Buletten",247,15,"🍗 Protein"],
+  ["Fleischklößchen",180,12,"🍗 Protein"],
+  ["Wiener Schnitzel (Kalb)",240,20,"🍗 Protein"],
+  ["Schweineschnitzel paniert",250,17,"🍗 Protein"],
+  ["Hähnchenkeule (gegrillt)",180,25,"🍗 Protein"],
+  ["Brathähnchen (halbes)",200,22,"🍗 Protein"],
+  ["Grillhähnchen",180,24,"🍗 Protein"],
+  ["Hähnchenbrust (gegrillt)",165,31,"🍗 Protein"],
+  ["Putenbrust (gegrillt)",110,24,"🍗 Protein"],
+  ["Rindersteak (medium)",220,26,"🍗 Protein"],
+  ["T-Bone-Steak",247,24,"🍗 Protein"],
+  ["Rumpsteak",180,27,"🍗 Protein"],
+  ["Entrecôte",230,25,"🍗 Protein"],
+  ["Hüftsteak",170,27,"🍗 Protein"],
+  ["Flanksteak",190,27,"🍗 Protein"],
+  ["Lammkeule",230,25,"🍗 Protein"],
+  ["Lammrücken",250,24,"🍗 Protein"],
+  ["Lammbraten",234,25,"🍗 Protein"],
+  ["Spanferkel",220,24,"🍗 Protein"],
+  ["Bratwurst (fein)",290,12,"🍗 Protein"],
+  ["Nürnberger Würstchen",300,13,"🍗 Protein"],
+  ["Thüringer Bratwurst",290,12,"🍗 Protein"],
+  ["Krakauer",290,14,"🍗 Protein"],
+  ["Bockwurst",250,11,"🍗 Protein"],
+  ["Frankfurter Würstchen",280,11,"🍗 Protein"],
+  ["Käsekrainer",300,12,"🍗 Protein"],
+  ["Debreziner",320,14,"🍗 Protein"],
+  ["Merguez",300,16,"🍗 Protein"],
+  ["Chipolata",290,13,"🍗 Protein"],
+  ["Wurstsalat",220,10,"🍗 Protein"],
+  ["Sülzwurst",120,12,"🍗 Protein"],
+  ["Presskopf",230,15,"🍗 Protein"],
+  ["Schwartenmagen",290,14,"🍗 Protein"],
+  ["Zungenwurst",330,13,"🍗 Protein"],
+  ["Gänseleberpastete",450,11,"🍗 Protein"],
+  ["Rilette",400,15,"🍗 Protein"],
+  ["Hähnchenpastete",250,14,"🍗 Protein"],
+  ["Lachs (gegrillt)",230,23,"🍗 Protein"],
+  ["Lachs (gebraten)",240,23,"🍗 Protein"],
+  ["Lachsschinken",120,22,"🍗 Protein"],
+  ["Graved Lachs",180,18,"🍗 Protein"],
+  ["Thunfisch (frisch)",144,23,"🍗 Protein"],
+  ["Thunfischsalat",180,12,"🍗 Protein"],
+  ["Heringssalat",180,8,"🍗 Protein"],
+  ["Rollmops",170,15,"🍗 Protein"],
+  ["Brathering",200,15,"🍗 Protein"],
+  ["Krabbensalat",200,10,"🍗 Protein"],
+  ["Nordseekrabben",87,18,"🍗 Protein"],
+  ["Flusskrebs",75,16,"🍗 Protein"],
+  ["Lachstatar",180,18,"🍗 Protein"],
+  ["Forelle (geräuchert)",180,20,"🍗 Protein"],
+  ["Makrele (geräuchert)",240,20,"🍗 Protein"],
+  ["Fischstäbchen (Backofen)",195,12,"🍗 Protein"],
+  ["Schlemmerfilet",150,12,"🍗 Protein"],
+  ["Seelachsfilet (paniert)",200,14,"🍗 Protein"],
+  ["Tintenfischringe",175,15,"🍗 Protein"],
+  ["Garnelencocktail",150,12,"🍗 Protein"],
+  ["Sushi (Lachs)",140,6,"🍞 Kohlenhydrate"],
+  ["Sushi (Thunfisch)",130,7,"🍞 Kohlenhydrate"],
+  ["Poke Bowl (Lachs)",150,9,"🍞 Kohlenhydrate"],
+  ["Ceviche",90,15,"🍗 Protein"],
+  ["Fish & Chips",230,12,"🍗 Protein"],
+  ["Scampi",90,19,"🍗 Protein"],
+  ["Joghurt (Vanille, fettarm)",85,4,"🥛 Milchprodukte"],
+  ["Joghurt (griechisch, Honig)",120,5,"🥛 Milchprodukte"],
+  ["Joghurt (Kokos)",110,3,"🥛 Milchprodukte"],
+  ["Skyr (Heidelbeere)",73,9,"🥛 Milchprodukte"],
+  ["Skyr (Pur)",63,11,"🥛 Milchprodukte"],
+  ["Quark (Frucht)",100,9,"🥛 Milchprodukte"],
+  ["Speisequark mager",67,12,"🥛 Milchprodukte"],
+  ["Pudding (Vanille)",110,3,"🥛 Milchprodukte"],
+  ["Grießpudding",100,4,"🥛 Milchprodukte"],
+  ["Schokopudding",120,3,"🥛 Milchprodukte"],
+  ["Sahnepudding",150,3,"🥛 Milchprodukte"],
+  ["Joghurtdrink",70,3,"🥛 Milchprodukte"],
+  ["Actimel",70,3,"🥛 Milchprodukte"],
+  ["Fruchtzwerge",110,5,"🥛 Milchprodukte"],
+  ["Monte Drink",120,3,"🥛 Milchprodukte"],
+  ["Kinder Milchschnitte",450,7,"🍰 Snacks/Süßes"],
+  ["Kinder Maxi King",490,6,"🍰 Snacks/Süßes"],
+  ["Müllermilch",75,3,"🥛 Milchprodukte"],
+  ["Käse (Scheibletten)",250,15,"🥛 Milchprodukte"],
+  ["Streichkäse",250,8,"🥛 Milchprodukte"],
+  ["Hirtenkäse",264,14,"🥛 Milchprodukte"],
+  ["Burrata",330,11,"🥛 Milchprodukte"],
+  ["Quark (40% i.Tr.)",160,11,"🥛 Milchprodukte"],
+  ["Crème double",480,2,"🥛 Milchprodukte"],
+  ["Sauerrahm",115,3,"🥛 Milchprodukte"],
+  ["Dickmilch",53,3.4,"🥛 Milchprodukte"],
+  ["Bergbauernkäse",380,27,"🥛 Milchprodukte"],
+  ["Räucherkäse",330,24,"🥛 Milchprodukte"],
+  ["Kräuterfrischkäse",230,6,"🥛 Milchprodukte"],
+  ["Frischkäse (Lachs)",240,8,"🥛 Milchprodukte"],
+  ["Ziegenfrischkäse",280,18,"🥛 Milchprodukte"],
+  ["Schafskäse (Salzlake)",260,14,"🥛 Milchprodukte"],
+  ["Mozzarella (Büffel)",288,17,"🥛 Milchprodukte"],
+  ["Käsewürfel (gemischt)",360,24,"🥛 Milchprodukte"],
+  ["Reibekäse",380,26,"🥛 Milchprodukte"],
+  ["Pizzakäse",300,22,"🥛 Milchprodukte"],
+  ["Mascarpone-Creme",400,4,"🥛 Milchprodukte"],
+  ["Roggenmischbrot",215,6,"🍞 Kohlenhydrate"],
+  ["Bauernbrot",235,7,"🍞 Kohlenhydrate"],
+  ["Kürbiskernbrot",260,8,"🍞 Kohlenhydrate"],
+  ["Walnussbrot",260,9,"🍞 Kohlenhydrate"],
+  ["Olivenbrot",250,8,"🍞 Kohlenhydrate"],
+  ["Weißbrot",265,8,"🍞 Kohlenhydrate"],
+  ["Sandwichbrot",250,9,"🍞 Kohlenhydrate"],
+  ["Proteinbrötchen",250,18,"🍞 Kohlenhydrate"],
+  ["Eiweißbrötchen",240,22,"🍞 Kohlenhydrate"],
+  ["Dinkelbrötchen",240,9,"🍞 Kohlenhydrate"],
+  ["Roggenbrötchen",240,8,"🍞 Kohlenhydrate"],
+  ["Doppelbrötchen",265,9,"🍞 Kohlenhydrate"],
+  ["Schokobrötchen",340,7,"🍰 Snacks/Süßes"],
+  ["Rosinenbrot",290,7,"🍞 Kohlenhydrate"],
+  ["Hefezopf",350,8,"🍰 Snacks/Süßes"],
+  ["Brioche",380,8,"🍰 Snacks/Süßes"],
+  ["Toast (Vollkorn)",245,9,"🍞 Kohlenhydrate"],
+  ["Pumpernickel (Scheibe)",185,5,"🍞 Kohlenhydrate"],
+  ["Fladenbrot",280,8,"🍞 Kohlenhydrate"],
+  ["Tortillas (Weizen)",312,8,"🍞 Kohlenhydrate"],
+  ["Hartkekse",420,8,"🍰 Snacks/Süßes"],
+  ["Vollkornkekse",450,8,"🍰 Snacks/Süßes"],
+  ["Dinkelkekse",460,8,"🍰 Snacks/Süßes"],
+  ["Haferkekse",450,7,"🍰 Snacks/Süßes"],
+  ["Russisch Brot",380,8,"🍰 Snacks/Süßes"],
+  ["Löffelbiskuit",390,7,"🍰 Snacks/Süßes"],
+  ["Cantuccini",420,9,"🍰 Snacks/Süßes"],
+  ["Biscotti",420,9,"🍰 Snacks/Süßes"],
+  ["Madeleine",450,6,"🍰 Snacks/Süßes"],
+  ["Scones",350,7,"🍰 Snacks/Süßes"],
+  ["Shortbread",520,6,"🍰 Snacks/Süßes"],
+  ["Florentiner",480,6,"🍰 Snacks/Süßes"],
+  ["Käsekuchen (Portion)",280,6,"🍰 Snacks/Süßes"],
+  ["Schwarzwälder Kirschtorte",290,4,"🍰 Snacks/Süßes"],
+  ["Sachertorte",380,5,"🍰 Snacks/Süßes"],
+  ["Bienenstich (Portion)",350,6,"🍰 Snacks/Süßes"],
+  ["Mohnkuchen",330,7,"🍰 Snacks/Süßes"],
+  ["Marmorkuchen",420,6,"🍰 Snacks/Süßes"],
+  ["Zitronenkuchen",380,5,"🍰 Snacks/Süßes"],
+  ["Karottenkuchen",380,5,"🍰 Snacks/Süßes"],
+  ["Nusskuchen",430,8,"🍰 Snacks/Süßes"],
+  ["Obstkuchen",220,3,"🍰 Snacks/Süßes"],
+  ["Käse-Sahne-Torte",290,5,"🍰 Snacks/Süßes"],
+  ["Müsli (Bircher)",140,4,"🍞 Kohlenhydrate"],
+  ["Overnight Oats",120,5,"🍞 Kohlenhydrate"],
+  ["Granola (Schoko)",460,9,"🍞 Kohlenhydrate"],
+  ["Crunchy (Nuss)",470,10,"🍞 Kohlenhydrate"],
+  ["Cini Minis",420,6,"🍞 Kohlenhydrate"],
+  ["Smacks",380,7,"🍞 Kohlenhydrate"],
+  ["Froot Loops",380,5,"🍞 Kohlenhydrate"],
+  ["Choco Krispies",385,6,"🍞 Kohlenhydrate"],
+  ["Müsli (Beeren)",350,8,"🍞 Kohlenhydrate"],
+  ["5-Korn-Müsli",360,11,"🍞 Kohlenhydrate"],
+  ["Haferflocken (kernig)",372,13,"🍞 Kohlenhydrate"],
+  ["Reis (Risotto, roh)",350,7,"🍞 Kohlenhydrate"],
+  ["Milchreis (roh)",350,7,"🍞 Kohlenhydrate"],
+  ["Paella-Reis",350,7,"🍞 Kohlenhydrate"],
+  ["Naturreis (gekocht)",111,2.6,"🍞 Kohlenhydrate"],
+  ["Spaghetti (Vollkorn, gekocht)",149,5.5,"🍞 Kohlenhydrate"],
+  ["Bandnudeln",368,13,"🍞 Kohlenhydrate"],
+  ["Makkaroni (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Tagliatelle (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Farfalle (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Rigatoni (gekocht)",158,5.8,"🍞 Kohlenhydrate"],
+  ["Cannelloni",200,9,"🍞 Kohlenhydrate"],
+  ["Maultaschen (gefüllt)",180,9,"🍞 Kohlenhydrate"],
+  ["Schlutzkrapfen",200,8,"🍞 Kohlenhydrate"],
+  ["Pierogi",200,6,"🍞 Kohlenhydrate"],
+  ["Kartoffelgratin",130,3,"🍞 Kohlenhydrate"],
+  ["Kartoffelgulasch",90,3,"🍞 Kohlenhydrate"],
+  ["Bratkartoffeln (Speck)",170,4,"🍞 Kohlenhydrate"],
+  ["Folienkartoffel",93,2.5,"🍞 Kohlenhydrate"],
+  ["Süßkartoffel-Pommes",150,2,"🍞 Kohlenhydrate"],
+  ["Gemüsereis",130,3,"🍞 Kohlenhydrate"],
+  ["Reispfanne",140,4,"🍞 Kohlenhydrate"],
+  ["Nudelauflauf",160,7,"🍞 Kohlenhydrate"],
+  ["Kartoffelauflauf",120,4,"🍞 Kohlenhydrate"],
+  ["Gemüseauflauf",90,4,"🍞 Kohlenhydrate"],
+  ["Lasagne (vegetarisch)",120,6,"🍞 Kohlenhydrate"],
+  ["Linsendal",120,6,"🍞 Kohlenhydrate"],
+  ["Bohneneintopf",95,6,"🍞 Kohlenhydrate"],
+  ["Erbsenpüree",90,6,"🍞 Kohlenhydrate"],
+  ["Hummus (Zitrone)",177,8,"🍗 Protein"],
+  ["Falafelbällchen",333,13,"🍗 Protein"],
+  ["Kichererbsensalat",150,7,"🍞 Kohlenhydrate"],
+  ["Bohnensalat",110,6,"🍞 Kohlenhydrate"],
+  ["Linsensalat",120,7,"🍞 Kohlenhydrate"],
+  ["Apfel (Granny Smith)",52,0.3,"🍎 Obst"],
+  ["Apfel (Gala)",54,0.3,"🍎 Obst"],
+  ["Birne (Williams)",57,0.4,"🍎 Obst"],
+  ["Nashi-Birne",42,0.5,"🍎 Obst"],
+  ["Banane (reif)",95,1.1,"🍎 Obst"],
+  ["Mini-Banane",89,1.1,"🍎 Obst"],
+  ["Erdbeere (TK, gezuckert)",70,0.5,"🍎 Obst"],
+  ["Beerenmischung",42,1,"🍎 Obst"],
+  ["Heidelbeeren (frisch)",42,0.7,"🍎 Obst"],
+  ["Stachelbeeren",44,0.9,"🍎 Obst"],
+  ["Aronia-Beeren",47,1.4,"🍎 Obst"],
+  ["Sanddorn",82,1.4,"🍎 Obst"],
+  ["Mirabelle",65,0.8,"🍎 Obst"],
+  ["Renekloden",60,0.8,"🍎 Obst"],
+  ["Zwetschge",43,0.7,"🍎 Obst"],
+  ["Sauerkirsche",50,1,"🍎 Obst"],
+  ["Süßkirsche",63,1,"🍎 Obst"],
+  ["Weintraube (rot)",69,0.7,"🍎 Obst"],
+  ["Weintraube (kernlos)",67,0.6,"🍎 Obst"],
+  ["Kaktusfeige",41,0.7,"🍎 Obst"],
+  ["Guave",68,2.6,"🍎 Obst"],
+  ["Sternfrucht",31,1,"🍎 Obst"],
+  ["Passionsfrucht",97,2.2,"🍎 Obst"],
+  ["Tamarinde",239,2.8,"🍎 Obst"],
+  ["Cranberry (frisch)",46,0.4,"🍎 Obst"],
+  ["Brombeere (TK)",36,1.4,"🍎 Obst"],
+  ["Apfelschnitze",54,0.3,"🍎 Obst"],
+  ["Melone (gemischt)",36,0.7,"🍎 Obst"],
+  ["Kokosnuss (frisch)",354,3.3,"🍎 Obst"],
+  ["Dattel (Medjool)",277,1.8,"🍎 Obst"],
+  ["Trockenobst-Mix",290,3,"🍎 Obst"],
+  ["Bananenchips",519,2.3,"🍰 Snacks/Süßes"],
+  ["Mango (Stücke)",70,0.8,"🍎 Obst"],
+  ["Ananas (Dose)",60,0.4,"🍎 Obst"],
+  ["Pfirsich (Dose)",55,0.5,"🍎 Obst"],
+  ["Mandarinen (Dose)",56,0.6,"🍎 Obst"],
+  ["Fruchtmus (Quetschie)",60,0.4,"🍎 Obst"],
+  ["Apfel-Birne-Mus",55,0.3,"🍎 Obst"],
+  ["Salatgurke",12,0.6,"🥦 Gemüse"],
+  ["Cocktailtomaten",18,0.9,"🥦 Gemüse"],
+  ["Strauchtomaten",18,0.9,"🥦 Gemüse"],
+  ["Ochsenherztomate",18,0.9,"🥦 Gemüse"],
+  ["Datteltomaten",20,0.9,"🥦 Gemüse"],
+  ["Babyspinat",23,2.9,"🥦 Gemüse"],
+  ["Romanasalat",17,1.2,"🥦 Gemüse"],
+  ["Lollo Rosso",16,1.3,"🥦 Gemüse"],
+  ["Endiviensalat",17,1.8,"🥦 Gemüse"],
+  ["Radicchio",23,1.4,"🥦 Gemüse"],
+  ["Chicorée",17,1.3,"🥦 Gemüse"],
+  ["Portulak",16,2,"🥦 Gemüse"],
+  ["Brunnenkresse",11,2.3,"🥦 Gemüse"],
+  ["Löwenzahn",45,2.7,"🥦 Gemüse"],
+  ["Palmkohl",35,3,"🥦 Gemüse"],
+  ["Bohnen (gelb)",31,1.8,"🥦 Gemüse"],
+  ["Stangenbohnen",31,2,"🥦 Gemüse"],
+  ["Wachsbohnen",30,2,"🥦 Gemüse"],
+  ["Erbsenschoten",42,2.8,"🥦 Gemüse"],
+  ["Kichererbsen (Dose)",119,7,"🍞 Kohlenhydrate"],
+  ["Kidneybohnen (Dose)",100,7,"🍞 Kohlenhydrate"],
+  ["Mais (Babykolben)",30,2,"🥦 Gemüse"],
+  ["Aubergine (gegrillt)",30,1,"🥦 Gemüse"],
+  ["Zucchini (gegrillt)",25,1.5,"🥦 Gemüse"],
+  ["Paprika (gegrillt)",35,1,"🥦 Gemüse"],
+  ["Pilze (gebraten)",40,3,"🥦 Gemüse"],
+  ["Pfifferlinge",11,2,"🥦 Gemüse"],
+  ["Steinpilze",26,5,"🥦 Gemüse"],
+  ["Austernpilze",33,3.7,"🥦 Gemüse"],
+  ["Shiitake",34,2.2,"🥦 Gemüse"],
+  ["Enoki-Pilze",37,2.7,"🥦 Gemüse"],
+  ["Brokkoli (gedämpft)",34,2.8,"🥦 Gemüse"],
+  ["Blumenkohl (gedämpft)",25,1.9,"🥦 Gemüse"],
+  ["Kohlrabi-Sticks",27,1.7,"🥦 Gemüse"],
+  ["Möhren-Sticks",41,0.9,"🥦 Gemüse"],
+  ["Sellerie-Sticks",16,0.7,"🥦 Gemüse"],
+  ["Gemüse-Sticks",30,1,"🥦 Gemüse"],
+  ["Rote-Bete-Salat",60,1.5,"🥦 Gemüse"],
+  ["Karottensalat",70,1,"🥦 Gemüse"],
+  ["Gurkensalat",40,0.7,"🥦 Gemüse"],
+  ["Tomatensalat",30,1,"🥦 Gemüse"],
+  ["Coleslaw",150,1.5,"🥦 Gemüse"],
+  ["Krautsalat",120,1.5,"🥦 Gemüse"],
+  ["Wildkräutersalat",20,2,"🥦 Gemüse"],
+  ["Gemischter Salat",20,1.5,"🥦 Gemüse"],
+  ["Mandeln (gehobelt)",579,21,"🥑 Fette"],
+  ["Mandelsplitter",579,21,"🥑 Fette"],
+  ["Walnusskerne",654,15,"🥑 Fette"],
+  ["Haselnusskerne",628,15,"🥑 Fette"],
+  ["Pekannusskerne",691,9,"🥑 Fette"],
+  ["Macadamiakerne",718,8,"🥑 Fette"],
+  ["Cashewkerne (natur)",553,18,"🥑 Fette"],
+  ["Pinienkerne (geröstet)",673,14,"🥑 Fette"],
+  ["Erdnüsse (geröstet, gesalzen)",599,26,"🥑 Fette"],
+  ["Sonnenblumenkerne (geschält)",584,21,"🥑 Fette"],
+  ["Kürbiskerne (geröstet)",559,30,"🥑 Fette"],
+  ["Hanfsamen (geschält)",553,32,"🥑 Fette"],
+  ["Leinsamen (geschrotet)",534,18,"🥑 Fette"],
+  ["Chiasamen (gequollen)",100,3,"🥑 Fette"],
+  ["Sesammus",595,17,"🥑 Fette"],
+  ["Erdmandeln",450,4,"🥑 Fette"],
+  ["Sojanüsse",450,38,"🥑 Fette"],
+  ["Edamame (geröstet)",520,35,"🥑 Fette"],
+  ["Kokosöl (nativ)",862,0,"🥑 Fette"],
+  ["MCT-Öl",900,0,"🥑 Fette"],
+  ["Avocadoöl",884,0,"🥑 Fette"],
+  ["Distelöl",884,0,"🥑 Fette"],
+  ["Traubenkernöl",884,0,"🥑 Fette"],
+  ["Erdnussöl",884,0,"🥑 Fette"],
+  ["Kürbiskernöl (Steirisch)",884,0,"🥑 Fette"],
+  ["Schwarzkümmelöl",884,0,"🥑 Fette"],
+  ["Tofu (Basilikum)",145,15,"🍗 Protein"],
+  ["Tofu (Mandel-Nuss)",200,17,"🍗 Protein"],
+  ["Räuchertofu (Paprika)",150,16,"🍗 Protein"],
+  ["Seitan-Geschnetzeltes",140,22,"🍗 Protein"],
+  ["Seitan-Würstchen",180,20,"🍗 Protein"],
+  ["Lupinen-Geschnetzeltes",110,20,"🍗 Protein"],
+  ["Erbsenprotein-Schnitzel",180,17,"🍗 Protein"],
+  ["Sojaschnetzel-Bolognese",110,12,"🍞 Kohlenhydrate"],
+  ["Veggie-Hack (gebraten)",130,16,"🍗 Protein"],
+  ["Veganes Gulasch",120,10,"🍗 Protein"],
+  ["Veganer Aufschnitt (Salami)",200,12,"🍗 Protein"],
+  ["Vegane Mortadella",220,11,"🍗 Protein"],
+  ["Vegane Leberwurst",250,8,"🍗 Protein"],
+  ["Veganer Käse (Scheiben)",290,1,"🥛 Milchprodukte"],
+  ["Veganer Reibekäse",300,2,"🥛 Milchprodukte"],
+  ["Cashew-Frischkäse",290,6,"🥛 Milchprodukte"],
+  ["Mandel-Joghurt (Vanille)",70,1,"🥛 Milchprodukte"],
+  ["Soja-Skyr",60,8,"🥛 Milchprodukte"],
+  ["Lupinen-Joghurt",60,4,"🥛 Milchprodukte"],
+  ["Hafer-Cuisine (Sahne)",120,1,"🥛 Milchprodukte"],
+  ["Soja-Cuisine",60,3,"🥛 Milchprodukte"],
+  ["Veganes Eis (Soja)",200,3,"🍰 Snacks/Süßes"],
+  ["Veganes Eis (Kokos)",220,2,"🍰 Snacks/Süßes"],
+  ["Jackfruit (Pulled)",95,1.5,"🍗 Protein"],
+  ["Tofu-Bolognese",120,10,"🍞 Kohlenhydrate"],
+  ["Linsen-Bolognese",110,7,"🍞 Kohlenhydrate"],
+  ["Erbsen-Bratling",170,12,"🍗 Protein"],
+  ["Gemüsebratling",160,5,"🍗 Protein"],
+  ["Quinoa-Bratling",150,6,"🍗 Protein"],
+  ["Kichererbsen-Patty",180,9,"🍗 Protein"],
+  ["Veganes Schnitzel (Soja)",220,15,"🍗 Protein"],
+  ["Marmelade (Himbeere)",260,0.4,"🍰 Snacks/Süßes"],
+  ["Konfitüre (Kirsche)",260,0.4,"🍰 Snacks/Süßes"],
+  ["Gelee (Johannisbeere)",260,0.1,"🍰 Snacks/Süßes"],
+  ["Honig (Akazie)",304,0.3,"🍰 Snacks/Süßes"],
+  ["Honig (Wald)",304,0.3,"🍰 Snacks/Süßes"],
+  ["Ahornsirup (Grade A)",260,0,"🍰 Snacks/Süßes"],
+  ["Reissirup",310,0,"🍰 Snacks/Süßes"],
+  ["Erdnussbutter (smooth)",588,25,"🥑 Fette"],
+  ["Mandelmus (weiß)",614,21,"🥑 Fette"],
+  ["Schokocreme (Zartbitter)",530,5,"🍰 Snacks/Süßes"],
+  ["Weiße Schokocreme",550,4,"🍰 Snacks/Süßes"],
+  ["Spekulatius-Creme",520,4,"🍰 Snacks/Süßes"],
+  ["Karamellcreme",380,2,"🍰 Snacks/Süßes"],
+  ["Lemon Curd",280,2,"🍰 Snacks/Süßes"],
+  ["Apfelbutter",250,0.4,"🍰 Snacks/Süßes"],
+  ["Kürbisaufstrich",150,2,"🍳 Sonstiges"],
+  ["Tomatenaufstrich",120,2,"🍳 Sonstiges"],
+  ["Paprikaaufstrich",130,2,"🍳 Sonstiges"],
+  ["Linsenaufstrich",160,7,"🍗 Protein"],
+  ["Kichererbsenaufstrich (Hummus)",177,8,"🍗 Protein"],
+  ["Frischkäse (light, Kräuter)",146,9,"🥛 Milchprodukte"],
+  ["Schinkencreme",250,10,"🍗 Protein"],
+  ["Thunfischcreme",180,12,"🍗 Protein"],
+  ["Eiersalat",250,8,"🍗 Protein"],
+  ["Geflügelsalat",230,10,"🍗 Protein"],
+  ["Fleischsalat",350,7,"🍗 Protein"],
+  ["Wurstsalat (Lyoner)",250,10,"🍗 Protein"],
+  ["Milka Alpenmilch",530,6,"🍰 Snacks/Süßes"],
+  ["Milka Oreo",525,6,"🍰 Snacks/Süßes"],
+  ["Milka Luflée",550,6,"🍰 Snacks/Süßes"],
+  ["Lindt Excellence",560,8,"🍰 Snacks/Süßes"],
+  ["Ritter Sport Marzipan",470,7,"🍰 Snacks/Süßes"],
+  ["Ritter Sport Nuss",580,9,"🍰 Snacks/Süßes"],
+  ["Ritter Sport Knusperflakes",540,6,"🍰 Snacks/Süßes"],
+  ["After Eight",430,3,"🍰 Snacks/Süßes"],
+  ["Mon Chéri",470,4,"🍰 Snacks/Süßes"],
+  ["Rocher (einzeln)",580,8,"🍰 Snacks/Süßes"],
+  ["Celebrations",480,5,"🍰 Snacks/Süßes"],
+  ["Schoko-Bons",580,8,"🍰 Snacks/Süßes"],
+  ["Yogurette",560,6,"🍰 Snacks/Süßes"],
+  ["Knoppers",540,8,"🍰 Snacks/Süßes"],
+  ["Pickup",490,6,"🍰 Snacks/Süßes"],
+  ["BiFi",470,21,"🍰 Snacks/Süßes"],
+  ["Snack-Stick",470,20,"🍰 Snacks/Süßes"],
+  ["Salami-Sticks",430,22,"🍰 Snacks/Süßes"],
+  ["Käse-Cracker",500,12,"🍰 Snacks/Süßes"],
+  ["Goldfischli",490,11,"🍰 Snacks/Süßes"],
+  ["TUC Cracker",490,8,"🍰 Snacks/Süßes"],
+  ["Ritz Cracker",500,7,"🍰 Snacks/Süßes"],
+  ["Saltletts",380,9,"🍰 Snacks/Süßes"],
+  ["Brezel-Chips",430,9,"🍰 Snacks/Süßes"],
+  ["Kartoffelchips (Paprika)",530,6,"🍰 Snacks/Süßes"],
+  ["Kartoffelchips (Salz)",536,6,"🍰 Snacks/Süßes"],
+  ["Stapelchips (Pringles)",520,4,"🍰 Snacks/Süßes"],
+  ["Tortilla-Chips (Käse)",490,7,"🍰 Snacks/Süßes"],
+  ["Popcorn (süß)",450,6,"🍰 Snacks/Süßes"],
+  ["Popcorn (salzig)",500,9,"🍰 Snacks/Süßes"],
+  ["Erdnüsse (Wasabi)",450,22,"🍰 Snacks/Süßes"],
+  ["Studentenfutter (Schoko)",480,12,"🍰 Snacks/Süßes"],
+  ["Trail Mix",450,14,"🍰 Snacks/Süßes"],
+  ["Reiswaffeln (Schoko)",420,7,"🍰 Snacks/Süßes"],
+  ["Maischips",480,6,"🍰 Snacks/Süßes"],
+  ["Gummibärchen (sauer)",340,4,"🍰 Snacks/Süßes"],
+  ["Colaflaschen",330,5,"🍰 Snacks/Süßes"],
+  ["Schnüre (Fruchtgummi)",340,5,"🍰 Snacks/Süßes"],
+  ["Lollis",390,0,"🍰 Snacks/Süßes"],
+  ["Bonbons (Hart)",390,0,"🍰 Snacks/Süßes"],
+  ["Karamellbonbons",400,2,"🍰 Snacks/Süßes"],
+  ["Toffees",430,3,"🍰 Snacks/Süßes"],
+  ["Nougat",450,6,"🍰 Snacks/Süßes"],
+  ["Türkischer Honig",380,3,"🍰 Snacks/Süßes"],
+  ["Halva",540,12,"🍰 Snacks/Süßes"],
+  ["Baklava",430,6,"🍰 Snacks/Süßes"],
+  ["Kanafeh",350,7,"🍰 Snacks/Süßes"],
+  ["Lokum",330,0.2,"🍰 Snacks/Süßes"],
+  ["Schokokuss",380,3,"🍰 Snacks/Süßes"],
+  ["Schaumzucker",350,2,"🍰 Snacks/Süßes"],
+  ["Marshmallow-Schoko",400,3,"🍰 Snacks/Süßes"],
+  ["Dominosteine",380,4,"🍰 Snacks/Süßes"],
+  ["Eiskonfekt",560,4,"🍰 Snacks/Süßes"],
+  ["Mozartkugeln",480,6,"🍰 Snacks/Süßes"],
+  ["Pralinen (Trüffel)",540,5,"🍰 Snacks/Süßes"],
+  ["Schokorosinen",420,4,"🍰 Snacks/Süßes"],
+  ["Schokomandeln",520,10,"🍰 Snacks/Süßes"],
+  ["Schokoerdnüsse",520,12,"🍰 Snacks/Süßes"],
+  ["Energy Balls",420,8,"🍰 Snacks/Süßes"],
+  ["Datteln (gefüllt)",300,3,"🍰 Snacks/Süßes"],
+  ["Proteinriegel (Schoko)",350,33,"🍰 Snacks/Süßes"],
+  ["Proteinriegel (Karamell)",360,32,"🍰 Snacks/Süßes"],
+  ["Proteincookie",400,20,"🍰 Snacks/Süßes"],
+  ["Proteinchips",420,40,"🍰 Snacks/Süßes"],
+  ["Proteinkekse",430,25,"🍰 Snacks/Süßes"],
+  ["Skyr-Eis",120,8,"🍰 Snacks/Süßes"],
+  ["Frozen Joghurt (Frucht)",130,4,"🍰 Snacks/Süßes"],
+  ["Cola (Light)",1,0,"🥤 Getränke"],
+  ["Pepsi",43,0,"🥤 Getränke"],
+  ["Pepsi Max",1,0,"🥤 Getränke"],
+  ["Dr Pepper",41,0,"🥤 Getränke"],
+  ["7Up",42,0,"🥤 Getränke"],
+  ["Schweppes (Tonic)",34,0,"🥤 Getränke"],
+  ["Almdudler",40,0,"🥤 Getränke"],
+  ["Bionade",24,0,"🥤 Getränke"],
+  ["Fritz-Kola",43,0,"🥤 Getränke"],
+  ["Club Mate",20,0,"🥤 Getränke"],
+  ["Apfelschorle",24,0,"🥤 Getränke"],
+  ["Rhabarberschorle",30,0,"🥤 Getränke"],
+  ["Holunderschorle",35,0,"🥤 Getränke"],
+  ["Johannisbeerschorle",35,0,"🥤 Getränke"],
+  ["Eistee (Grüntee)",24,0,"🥤 Getränke"],
+  ["Ice Tea (Mango)",30,0,"🥤 Getränke"],
+  ["Wasser (mit Geschmack)",1,0,"🥤 Getränke"],
+  ["Aloe-Vera-Drink",40,0,"🥤 Getränke"],
+  ["Smoothie (rot)",55,1,"🥤 Getränke"],
+  ["Smoothie (gelb)",60,1,"🥤 Getränke"],
+  ["Smoothie (grün)",45,1.2,"🥤 Getränke"],
+  ["Acai-Bowl",90,2,"🥤 Getränke"],
+  ["Proteinshake (Schoko)",100,20,"🥤 Getränke"],
+  ["Proteinshake (Vanille)",100,20,"🥤 Getränke"],
+  ["Weight Gainer",380,30,"🥤 Getränke"],
+  ["BCAA-Drink",10,0,"🥤 Getränke"],
+  ["Molke-Drink",25,3,"🥤 Getränke"],
+  ["Kefir-Drink",52,3.3,"🥤 Getränke"],
+  ["Trinkjoghurt (Frucht)",70,3,"🥤 Getränke"],
+  ["Buttermilch (natur)",37,3.5,"🥤 Getränke"],
+  ["Mandelmilch (ungesüßt)",13,0.4,"🥛 Milchprodukte"],
+  ["Hafermilch (Barista)",59,1,"🥛 Milchprodukte"],
+  ["Sojamilch (Vanille)",54,3,"🥛 Milchprodukte"],
+  ["Reisdrink",47,0.3,"🥛 Milchprodukte"],
+  ["Latte (Hafer)",50,1.2,"🥤 Getränke"],
+  ["Flat White",60,3.5,"🥤 Getränke"],
+  ["Cold Brew",5,0.3,"🥤 Getränke"],
+  ["Frappuccino",120,3,"🥤 Getränke"],
+  ["Heiße Schokolade",90,3.5,"🥤 Getränke"],
+  ["Punsch",100,0,"🥤 Getränke"],
+  ["Eierpunsch",150,3,"🥤 Getränke"],
+  ["Sangria",120,0.3,"🥤 Getränke"],
+  ["Hugo",90,0,"🥤 Getränke"],
+  ["Lillet Wild Berry",110,0,"🥤 Getränke"],
+  ["Gin Tonic",90,0,"🥤 Getränke"],
+  ["Whisky Cola",100,0,"🥤 Getränke"],
+  ["Bacardi Cola",95,0,"🥤 Getränke"],
+  ["Wodka Energy",100,0,"🥤 Getränke"],
+  ["Sekt (trocken)",78,0.2,"🥤 Getränke"],
+  ["Rosé-Wein",80,0.1,"🥤 Getränke"],
+  ["Portwein",160,0.1,"🥤 Getränke"],
+  ["Sherry",116,0.2,"🥤 Getränke"],
+  ["Wermut",140,0,"🥤 Getränke"],
+  ["Aperitif",120,0,"🥤 Getränke"],
+  ["Bier (dunkel)",46,0.5,"🥤 Getränke"],
+  ["Bockbier",60,0.6,"🥤 Getränke"],
+  ["Pale Ale",50,0.5,"🥤 Getränke"],
+  ["IPA",55,0.5,"🥤 Getränke"],
+  ["Stout",45,0.6,"🥤 Getränke"],
+  ["Berliner Weiße",40,0.4,"🥤 Getränke"],
+  ["Weizen (alkoholfrei)",25,0.4,"🥤 Getränke"],
+  ["Cidre (trocken)",45,0.1,"🥤 Getränke"],
+  ["Pizza Diavola",280,12,"🍞 Kohlenhydrate"],
+  ["Pizza Capricciosa",250,11,"🍞 Kohlenhydrate"],
+  ["Pizza Spinaci",230,10,"🍞 Kohlenhydrate"],
+  ["Pizza (Rand)",280,9,"🍞 Kohlenhydrate"],
+  ["Pizzabrötchen (Käse)",290,10,"🍞 Kohlenhydrate"],
+  ["Pizzaschnecke",270,9,"🍞 Kohlenhydrate"],
+  ["Stromboli",260,11,"🍞 Kohlenhydrate"],
+  ["Focaccia (Tomate)",290,8,"🍞 Kohlenhydrate"],
+  ["Big Tasty",250,13,"🍗 Protein"],
+  ["McChicken",240,10,"🍗 Protein"],
+  ["Filet-o-Fish",230,11,"🍗 Protein"],
+  ["Hamburger Royal",260,13,"🍗 Protein"],
+  ["McFlurry",170,3,"🍰 Snacks/Süßes"],
+  ["Apfeltasche (McD)",250,2,"🍰 Snacks/Süßes"],
+  ["Chicken Nuggets (6 St.)",290,15,"🍗 Protein"],
+  ["Wrap (Hähnchen)",180,11,"🍞 Kohlenhydrate"],
+  ["Döner (mit Soße)",215,15,"🍗 Protein"],
+  ["Dürüm",220,14,"🍞 Kohlenhydrate"],
+  ["Lahmacun",230,11,"🍞 Kohlenhydrate"],
+  ["Pide",250,11,"🍞 Kohlenhydrate"],
+  ["Börek",280,8,"🍞 Kohlenhydrate"],
+  ["Falafel-Wrap",230,8,"🍞 Kohlenhydrate"],
+  ["Halloumi-Wrap",250,12,"🍞 Kohlenhydrate"],
+  ["Veggie-Döner",180,7,"🍗 Protein"],
+  ["Köfte-Teller",240,16,"🍗 Protein"],
+  ["Pommes mit Mayo",350,3,"🍞 Kohlenhydrate"],
+  ["Currywurst-Pommes",250,9,"🍳 Sonstiges"],
+  ["Bratwurst-Brötchen",280,12,"🍗 Protein"],
+  ["Fischbrötchen",200,12,"🍞 Kohlenhydrate"],
+  ["Hot Dog",290,11,"🍗 Protein"],
+  ["Corn Dog",250,8,"🍗 Protein"],
+  ["Burrito (Bohnen)",180,7,"🍞 Kohlenhydrate"],
+  ["Quesadilla (Käse)",290,13,"🍞 Kohlenhydrate"],
+  ["Taco (Rind)",230,12,"🍗 Protein"],
+  ["Nachos (Käse, Jalapeño)",340,8,"🍞 Kohlenhydrate"],
+  ["Enchilada (Hähnchen)",180,11,"🍗 Protein"],
+  ["Chili con Carne (Portion)",130,8,"🍗 Protein"],
+  ["Guacamole (Beilage)",150,2,"🥑 Fette"],
+  ["Tortillachips (Dip)",490,7,"🍰 Snacks/Süßes"],
+  ["Pico de Gallo",30,1,"🥦 Gemüse"],
+  ["Refried Beans",90,5,"🍞 Kohlenhydrate"],
+  ["Pad See Ew",160,7,"🍞 Kohlenhydrate"],
+  ["Massaman Curry",170,7,"🍞 Kohlenhydrate"],
+  ["Grünes Curry",130,5,"🍞 Kohlenhydrate"],
+  ["Gelbes Curry",140,5,"🍞 Kohlenhydrate"],
+  ["Mango Sticky Rice",180,3,"🍞 Kohlenhydrate"],
+  ["Spring Rolls (frittiert)",200,5,"🍞 Kohlenhydrate"],
+  ["Sommerrollen",90,4,"🍞 Kohlenhydrate"],
+  ["Dim Sum",180,7,"🍞 Kohlenhydrate"],
+  ["Gebratene Ente",250,18,"🍗 Protein"],
+  ["Süß-sauer Schwein",180,12,"🍗 Protein"],
+  ["Mapo Tofu",130,8,"🍗 Protein"],
+  ["Chow Mein",150,6,"🍞 Kohlenhydrate"],
+  ["Bibimbap",150,7,"🍞 Kohlenhydrate"],
+  ["Kimchi",15,1.1,"🥦 Gemüse"],
+  ["Bulgogi",180,18,"🍗 Protein"],
+  ["Teriyaki Chicken",160,18,"🍗 Protein"],
+  ["Katsu Curry",180,9,"🍞 Kohlenhydrate"],
+  ["Tonkatsu",250,17,"🍗 Protein"],
+  ["Gyoza",180,7,"🍞 Kohlenhydrate"],
+  ["Edamame (Vorspeise)",121,12,"🥦 Gemüse"],
+  ["Tandoori Chicken",160,20,"🍗 Protein"],
+  ["Palak Paneer",150,8,"🍗 Protein"],
+  ["Chana Masala",130,6,"🍞 Kohlenhydrate"],
+  ["Aloo Gobi",90,3,"🥦 Gemüse"],
+  ["Lassi (Mango)",100,3,"🥛 Milchprodukte"],
+  ["Pakora",260,6,"🍞 Kohlenhydrate"],
+  ["Chapati",250,8,"🍞 Kohlenhydrate"],
+  ["Roti",260,8,"🍞 Kohlenhydrate"],
+  ["Couscous-Salat",150,4,"🍞 Kohlenhydrate"],
+  ["Tajine (Hähnchen)",130,12,"🍗 Protein"],
+  ["Merguez-Teller",250,15,"🍗 Protein"],
+  ["Shakshuka",90,5,"🍗 Protein"],
+  ["Borschtsch",50,3,"🍳 Sonstiges"],
+  ["Pelmeni",230,9,"🍞 Kohlenhydrate"],
+  ["Stroganoff",150,12,"🍗 Protein"],
+  ["Pierogi (Kartoffel)",200,5,"🍞 Kohlenhydrate"],
+  ["Goulash (ungarisch)",140,12,"🍗 Protein"],
+  ["Langos",290,6,"🍞 Kohlenhydrate"],
+  ["Kartoffelpuffer (Reibekuchen)",200,4,"🍞 Kohlenhydrate"],
+  ["Hühnersuppe mit Nudeln",55,4,"🍳 Sonstiges"],
+  ["Tomaten-Reis-Suppe",60,2,"🍳 Sonstiges"],
+  ["Möhrensuppe",50,1.5,"🍳 Sonstiges"],
+  ["Sellerie-Suppe",55,2,"🍳 Sonstiges"],
+  ["Pilzcremesuppe",70,2,"🍳 Sonstiges"],
+  ["Lauchsuppe (mit Hack)",90,6,"🍳 Sonstiges"],
+  ["Käse-Lauch-Suppe",110,6,"🍳 Sonstiges"],
+  ["Soljanka",70,5,"🍳 Sonstiges"],
+  ["Flädlesuppe",60,3,"🍳 Sonstiges"],
+  ["Markklößchensuppe",70,3,"🍳 Sonstiges"],
+  ["Grießnockerlsuppe",70,3,"🍳 Sonstiges"],
+  ["Bouillon",10,1,"🍳 Sonstiges"],
+  ["Ochsenschwanzsuppe",50,3,"🍳 Sonstiges"],
+  ["Spargelsuppe",55,2,"🍳 Sonstiges"],
+  ["Erbseneintopf (mit Wurst)",100,6,"🍳 Sonstiges"],
+  ["Linseneintopf (mit Wurst)",100,6,"🍳 Sonstiges"],
+  ["Gulaschsuppe (Rind)",80,6,"🍳 Sonstiges"],
+  ["Kartoffel-Lauch-Suppe",70,2,"🍳 Sonstiges"],
+  ["Chili sin Carne",110,6,"🍞 Kohlenhydrate"],
+  ["Ratatouille (Portion)",55,1.5,"🥦 Gemüse"],
+  ["Eintopf (Bohnen)",95,6,"🍳 Sonstiges"],
+  ["Pichelsteiner Eintopf",90,6,"🍳 Sonstiges"],
+  ["Steckrübeneintopf",60,3,"🍳 Sonstiges"],
+  ["Grünkohleintopf",100,7,"🍳 Sonstiges"],
+  ["Sauerkrauteintopf",80,5,"🍳 Sonstiges"],
+  ["Möhreneintopf",60,3,"🍳 Sonstiges"],
+  ["Wirsingeintopf",70,4,"🍳 Sonstiges"],
+  ["Kohlsuppe",40,2,"🍳 Sonstiges"],
+  ["Rinderroulade (mit Soße)",170,18,"🍗 Protein"],
+  ["Schweinegeschnetzeltes",160,16,"🍗 Protein"],
+  ["Hähnchengeschnetzeltes (Rahm)",150,18,"🍗 Protein"],
+  ["Frikadellen (Soße)",200,13,"🍗 Protein"],
+  ["Kohlrouladen (Soße)",130,9,"🍗 Protein"],
+  ["Hackbraten (Soße)",230,16,"🍗 Protein"],
+  ["Schweinebraten (Kruste)",250,24,"🍗 Protein"],
+  ["Sauerbraten (Soße)",180,22,"🍗 Protein"],
+  ["Rinderbraten (Soße)",180,28,"🍗 Protein"],
+  ["Schnitzel (Pommes, Salat)",230,14,"🍗 Protein"],
+  ["Bratwurst (Kartoffelpüree)",220,11,"🍗 Protein"],
+  ["Kassler (Sauerkraut)",160,17,"🍗 Protein"],
+  ["Eisbein (Sauerkraut)",230,18,"🍗 Protein"],
+  ["Leberkäse (Spiegelei)",260,13,"🍗 Protein"],
+  ["Maultaschen (Brühe)",120,7,"🍞 Kohlenhydrate"],
+  ["Käsespätzle",230,9,"🍞 Kohlenhydrate"],
+  ["Spätzle (Soße)",214,7,"🍞 Kohlenhydrate"],
+  ["Schupfnudeln (Sauerkraut)",170,3,"🍞 Kohlenhydrate"],
+  ["Semmelknödel (Soße)",180,6,"🍞 Kohlenhydrate"],
+  ["Kartoffelklöße (Soße)",130,2.5,"🍞 Kohlenhydrate"],
+  ["Rotkohl (Beilage)",60,1,"🥦 Gemüse"],
+  ["Apfelrotkohl",70,1,"🥦 Gemüse"],
+  ["Blaukraut",60,1,"🥦 Gemüse"],
+  ["Erbsen & Möhren",60,3,"🥦 Gemüse"],
+  ["Leipziger Allerlei",55,3,"🥦 Gemüse"],
+  ["Tomatensoße (Basilikum)",55,2,"🍳 Sonstiges"],
+  ["Bolognese-Soße",100,6,"🍳 Sonstiges"],
+  ["Sahnesoße",150,2,"🍳 Sonstiges"],
+  ["Pilzrahmsoße",90,2,"🍳 Sonstiges"],
+  ["Pfeffersoße",110,2,"🍳 Sonstiges"],
+  ["Zwiebelsoße",70,2,"🍳 Sonstiges"],
+  ["Bratensoße (dunkel)",60,2,"🍳 Sonstiges"],
+  ["Käsesoße",150,5,"🍳 Sonstiges"],
+  ["Pesto (rot)",450,5,"🍳 Sonstiges"],
+  ["Pesto (Bärlauch)",450,5,"🍳 Sonstiges"],
+  ["Pesto (Rucola)",440,5,"🍳 Sonstiges"],
+  ["Tomatenpesto",350,4,"🍳 Sonstiges"],
+  ["Salsa (mild)",36,1.5,"🍳 Sonstiges"],
+  ["Salsa (scharf)",36,1.5,"🍳 Sonstiges"],
+  ["Guacamole (Dip)",150,2,"🥑 Fette"],
+  ["Sour Cream Dip",200,3,"🍳 Sonstiges"],
+  ["Kräuterquark-Dip",110,10,"🥛 Milchprodukte"],
+  ["Joghurt-Dip",90,4,"🥛 Milchprodukte"],
+  ["Zaziki-Dip",120,4,"🥛 Milchprodukte"],
+  ["Hummus-Dip",177,8,"🍗 Protein"],
+  ["Erdnusssoße",250,10,"🍳 Sonstiges"],
+  ["Süß-Sauer-Soße",120,0.5,"🍳 Sonstiges"],
+  ["Hoisin-Soße",220,3,"🍳 Sonstiges"],
+  ["Ponzu",30,1,"🍳 Sonstiges"],
+  ["Senf (süß)",150,5,"🍳 Sonstiges"],
+  ["Senf (Dijon)",120,7,"🍳 Sonstiges"],
+  ["Senf (körnig)",130,8,"🍳 Sonstiges"],
+  ["Mayonnaise (light)",350,1,"🍳 Sonstiges"],
+  ["Remoulade (light)",300,1,"🍳 Sonstiges"],
+  ["Ketchup (Curry)",110,1.2,"🍳 Sonstiges"],
+  ["Ketchup (zuckerreduziert)",60,1.2,"🍳 Sonstiges"],
+  ["Bratensaft",40,3,"🍳 Sonstiges"],
+  ["Geflügelfond",20,3,"🍳 Sonstiges"],
+  ["Rinderfond",18,3,"🍳 Sonstiges"],
+  ["Fischfond",15,2,"🍳 Sonstiges"],
+  ["Tomatensaft (gewürzt)",20,0.9,"🍳 Sonstiges"],
+  ["Sojasoße (hell)",60,8,"🍳 Sonstiges"],
+  ["Tamari",60,10,"🍳 Sonstiges"],
+  ["Misopaste",200,12,"🍳 Sonstiges"],
+  ["Kokosmilch (Curry)",197,2,"🥛 Milchprodukte"],
+  ["Schmand (Dip)",237,3,"🥛 Milchprodukte"],
+  ["Crème fraîche (Kräuter)",292,2.4,"🥛 Milchprodukte"],
+  ["Backmischung (Kuchen)",420,6,"🍞 Kohlenhydrate"],
+  ["Pizzateig (roh)",270,9,"🍞 Kohlenhydrate"],
+  ["Blätterteig",380,6,"🍞 Kohlenhydrate"],
+  ["Mürbeteig",450,6,"🍞 Kohlenhydrate"],
+  ["Hefeteig",280,8,"🍞 Kohlenhydrate"],
+  ["Pfannkuchenteig",180,6,"🍞 Kohlenhydrate"],
+  ["Waffelteig",290,6,"🍞 Kohlenhydrate"],
+  ["Knödelteig",130,3,"🍞 Kohlenhydrate"],
+  ["Paniermehl",350,12,"🍞 Kohlenhydrate"],
+  ["Semmelbrösel",350,12,"🍞 Kohlenhydrate"],
+  ["Speisestärke (Mais)",350,0.3,"🍞 Kohlenhydrate"],
+  ["Backhefe",105,8,"🍳 Sonstiges"],
+  ["Trockenhefe",325,40,"🍳 Sonstiges"],
+  ["Sauerteig",180,6,"🍞 Kohlenhydrate"],
+  ["Weizengrieß",348,11,"🍞 Kohlenhydrate"],
+  ["Hartweizengrieß",348,12,"🍞 Kohlenhydrate"],
+  ["Kokosflocken",660,7,"🥑 Fette"],
+  ["Schokodrops",500,5,"🍰 Snacks/Süßes"],
+  ["Zuckerstreusel",400,0,"🍰 Snacks/Süßes"],
+  ["Fondant",380,0,"🍰 Snacks/Süßes"],
+  ["Gelatine (Pulver)",335,84,"🍳 Sonstiges"],
+  ["Agar-Agar",26,0,"🍳 Sonstiges"],
+  ["Pektin",340,0,"🍳 Sonstiges"],
+  ["Vanilleextrakt",288,0,"🍳 Sonstiges"],
+  ["Kakaonibs",450,14,"🍳 Sonstiges"],
+  ["Carobpulver",220,5,"🍳 Sonstiges"],
+  ["Proteinpulver (Casein)",360,80,"🍗 Protein"],
+  ["Proteinpulver (vegan)",370,75,"🍗 Protein"],
+  ["Kollagenpulver",360,90,"🍗 Protein"],
+  ["Maltodextrin",380,0,"🍞 Kohlenhydrate"],
+  ["Kreatin",0,0,"🍳 Sonstiges"],
+  ["Flohsamen (gemahlen)",21,1.5,"🥑 Fette"],
+  ["Backaroma",0,0,"🍳 Sonstiges"],
+  ["Zimt (gemahlen)",247,4,"🍳 Sonstiges"],
+  ["Vanille (gemahlen)",288,1.2,"🍳 Sonstiges"],
+  ["Currypulver",325,14,"🍳 Sonstiges"],
+  ["Paprikapulver",282,14,"🍳 Sonstiges"],
+  ["Chilipulver",282,13,"🍳 Sonstiges"],
+  ["Kreuzkümmel",375,18,"🍳 Sonstiges"],
+  ["Oregano (getrocknet)",265,9,"🍳 Sonstiges"],
+  ["Basilikum (getrocknet)",233,23,"🍳 Sonstiges"],
+  ["Thymian (getrocknet)",276,9,"🍳 Sonstiges"],
+  ["Knoblauchpulver",331,17,"🍳 Sonstiges"],
+  ["Zwiebelpulver",341,10,"🍳 Sonstiges"]
+];
+
+// ---------- State ----------
+let state = { entries:{}, date:todayStr(), custom:[], favs:[], recent:[], weights:{} };
+loadAll();
+
+function todayStr(d){ return (d||new Date()).toISOString().split("T")[0]; }
+function lsGet(k,def){ try { const r=localStorage.getItem(k); return r?JSON.parse(r):def; } catch(e){ return def; } }
+function lsSet(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function loadAll(){
+  state.entries = lsGet("kt_entries", {});
+  state.custom  = lsGet("kt_custom", []);
+  state.favs    = lsGet("kt_favs", []);
+  state.recent  = lsGet("kt_recent", []);
+  state.weights = lsGet("kt_weights", {});
+}
+
+let selKat = "🍎 Obst";
+
+const app = document.getElementById("app");
+const subEl = document.getElementById("sub");
+
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function dayEntries(){ return state.entries[state.date] || []; }
+function allFoods(){ return DB.concat(state.custom); }
+function customSet(){ return new Set(state.custom.map(f=>f[0].toLowerCase())); }
+function isFav(name){ return state.favs.some(f=>f[0].toLowerCase()===name.toLowerCase()); }
+function latestWeight(){
+  const ds = Object.keys(state.weights).sort();
+  return ds.length ? state.weights[ds[ds.length-1]] : null;
+}
+
+function fmtDate(ds){
+  if (ds === todayStr()) return "Heute";
+  return new Date(ds+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
+}
+
+// ---------- Weight chart ----------
+function weightChart(){
+  const ds = Object.keys(state.weights).sort();
+  if (ds.length < 2) return "";
+  const vals = ds.map(d=>state.weights[d]);
+  const min = Math.floor(Math.min(...vals)-1), max = Math.ceil(Math.max(...vals)+1);
+  const W=300, H=110, padL=28, padR=8, padT=10, padB=18;
+  const innerW = W-padL-padR, innerH = H-padT-padB;
+  const x = i => padL + (ds.length===1?innerW/2:innerW*i/(ds.length-1));
+  const y = v => padT + innerH*(1-(v-min)/(max-min || 1));
+  let pts = ds.map((d,i)=>`${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`).join(" ");
+  let dots = ds.map((d,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="2.6" fill="#7ec8e3"/>`).join("");
+  const first = ds[0].slice(5), last = ds[ds.length-1].slice(5);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-top:10px">
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+innerH}" stroke="rgba(255,255,255,0.1)"/>
+    <line x1="${padL}" y1="${padT+innerH}" x2="${W-padR}" y2="${padT+innerH}" stroke="rgba(255,255,255,0.1)"/>
+    <text x="2" y="${padT+4}" fill="#6a7a8a" font-size="9" font-family="Georgia">${max}</text>
+    <text x="2" y="${padT+innerH}" fill="#6a7a8a" font-size="9" font-family="Georgia">${min}</text>
+    <polyline points="${pts}" fill="none" stroke="#7ec8e3" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}
+    <text x="${padL}" y="${H-4}" fill="#6a7a8a" font-size="9" font-family="Georgia">${first}</text>
+    <text x="${W-padR}" y="${H-4}" fill="#6a7a8a" font-size="9" font-family="Georgia" text-anchor="end">${last}</text>
+  </svg>`;
+}
+
+function weightCard(){
+  const lw = latestWeight();
+  const ds = Object.keys(state.weights).sort();
+  const cur = state.weights[state.date];
+  let trend = "";
+  if (ds.length >= 2){
+    const diff = (state.weights[ds[ds.length-1]] - state.weights[ds[0]]);
+    const c = diff<0?"var(--green)":diff>0?"var(--red)":"var(--muted2)";
+    trend = `<span style="color:${c};font-size:13px">${diff>0?"+":""}${diff.toFixed(1)} kg seit Start</span>`;
+  }
+  return `<div class="card sm">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="cap">⚖️ Gewicht</div>
+      <div>${lw!=null?`<b style="font-size:15px">${lw} kg</b> ${trend}`:`<span style="color:var(--muted2);font-size:12px">noch keine Daten</span>`}</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input class="winput" id="wInput" type="number" inputmode="decimal" placeholder="kg" value="${cur!=null?cur:""}">
+      <span style="font-size:12px;color:var(--muted2);flex:1">für ${state.date===todayStr()?"heute":state.date}</span>
+      <button class="wbtn" id="wSave">${cur!=null?"Aktualisieren":"Eintragen"}</button>
+    </div>
+    ${weightChart()}
+  </div>`;
+}
+
+// ---------- Main render ----------
+function render(){
+  const lw = latestWeight();
+  subEl.textContent = `${lw!=null?lw:START_GEWICHT} kg · Ziel: ${ZIEL} kcal · ${EIWEISS_ZIEL}g Eiweiß`;
+
+  const entries = dayEntries();
+  const kcal = entries.reduce((s,e)=>s+e.kcal,0);
+  const eiw = entries.reduce((s,e)=>s+(e.eiweiss||0),0);
+  const remain = ZIEL - kcal;
+  const pct = Math.min(kcal/ZIEL*100,100);
+  const over = kcal > ZIEL;
+  const defizit = TDEE - kcal;
+  const ring = over ? "var(--red)" : pct>80 ? "var(--amber)" : "var(--green)";
+  const C = 2*Math.PI*54, dash = pct/100*C;
+  const today = todayStr();
+
+  let html = "";
+  html += `<div class="datebar">
+    <button class="datebtn" id="prevDay">←</button>
+    <div class="datelabel"><div class="d1">${fmtDate(state.date)}</div>${state.date!==today?`<div class="d2">${state.date}</div>`:""}</div>
+    <button class="datebtn" id="nextDay" ${state.date===today?"disabled":""}>→</button>
+  </div>`;
+
+  html += `<div class="card"><div class="ringrow">
+    <svg width="128" height="128" style="flex-shrink:0">
+      <circle cx="64" cy="64" r="54" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+      <circle cx="64" cy="64" r="54" fill="none" stroke="${ring}" stroke-width="10" stroke-dasharray="${dash} ${C}" stroke-linecap="round" transform="rotate(-90 64 64)"/>
+      <text x="64" y="58" text-anchor="middle" fill="var(--text)" font-size="22" font-weight="bold" font-family="Georgia">${kcal}</text>
+      <text x="64" y="74" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="Georgia">kcal</text>
+      <text x="64" y="89" text-anchor="middle" fill="var(--muted2)" font-size="10" font-family="Georgia">von ${ZIEL}</text>
+    </svg>
+    <div style="flex:1">
+      <div style="margin-bottom:12px"><div class="stat-label">Verbleibend</div>
+        <div class="remain" style="color:${over?"var(--red)":"var(--green)"}">${over?"+"+Math.abs(remain):remain} kcal</div></div>
+      <div class="defbox"><div class="t">Kaloriendefizit heute</div>
+        <div class="v" style="color:${defizit>0?"var(--blue)":"var(--red)"}">${defizit>0?"−"+defizit:"+"+Math.abs(defizit)} kcal</div>
+        <div class="s">Erhaltungsbedarf: ${TDEE} kcal</div></div>
+    </div>
+  </div></div>`;
+
+  const pPct = Math.min(eiw/EIWEISS_ZIEL*100,100);
+  html += `<div class="card sm">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="cap">🥩 Eiweiß</div>
+      <div style="font-size:13px;font-weight:bold;color:${eiw>=EIWEISS_ZIEL?"var(--green)":"var(--amber)"}">${eiw}g / ${EIWEISS_ZIEL}g</div></div>
+    <div class="barbg" style="height:8px"><div class="barfill" style="width:${pPct}%;background:${eiw>=EIWEISS_ZIEL?"var(--green)":"linear-gradient(90deg,#e8a84a,#e8675a)"}"></div></div>
+    <div style="font-size:11px;color:var(--dim);margin-top:5px">${eiw>=EIWEISS_ZIEL?"✓ Eiweißziel erreicht!":"Noch "+(EIWEISS_ZIEL-eiw)+"g Eiweiß fehlen"}</div>
+  </div>`;
+
+  html += `<div class="card sm">
+    <div class="cap" style="margin-bottom:10px;display:block">Tagesfortschritt</div>
+    <div class="barbg"><div class="barfill" style="width:${pct}%;background:linear-gradient(90deg,#4caf82,${ring})"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted2)"><span>0</span><span>${Math.round(ZIEL/2)}</span><span>${ZIEL}</span></div>
+  </div>`;
+
+  html += weightCard();
+
+  html += `<div style="margin-bottom:16px"><div class="cap" style="margin-bottom:12px;display:block">Heute gegessen</div>`;
+  if (!entries.length) html += `<div class="empty">Noch keine Einträge 🍽️</div>`;
+  else entries.forEach(e=>{
+    const c = KAT[e.kategorie] || "#b8b8b8";
+    html += `<div class="entry">
+      <div class="ico" style="background:${c}22;border:1px solid ${c}44">${e.kategorie.split(" ")[0]}</div>
+      <div style="flex:1;min-width:0"><div class="ename">${esc(e.name)}</div>
+        <div class="emeta">${e.menge}g · ${e.kcalPro100} kcal/100g${e.eiweiss?" · 🥩 "+e.eiweiss+"g":""} · ${e.zeit}</div></div>
+      <div style="text-align:right;flex-shrink:0"><div class="ekcal" style="color:${c}">${e.kcal}</div><div style="font-size:10px;color:var(--dim)">kcal</div></div>
+      <button class="del" data-id="${e.id}">×</button></div>`;
+  });
+  html += `</div>`;
+
+  const days = Object.keys(state.entries).sort().reverse().slice(0,7);
+  if (days.length > 1){
+    html += `<div class="card sm"><div class="cap" style="margin-bottom:12px;display:block">Verlauf</div>`;
+    days.forEach(t=>{
+      const k = (state.entries[t]||[]).reduce((s,e)=>s+e.kcal,0);
+      const p = Math.min(k/ZIEL*100,120), ok = k<=ZIEL;
+      const lbl = t===today?"Heute":new Date(t+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"});
+      html += `<div class="histrow" data-date="${t}">
+        <div class="histtop" style="color:${t===state.date?"var(--text)":"var(--muted2)"}"><span>${lbl}</span><span style="color:${ok?"var(--green)":"var(--red)"};font-weight:bold">${k} kcal</span></div>
+        <div class="barbg" style="height:6px"><div class="barfill" style="width:${p}%;background:${ok?"var(--green)":"var(--red)"}"></div></div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  app.innerHTML = html;
+
+  document.getElementById("prevDay").onclick = ()=>{ const d=new Date(state.date); d.setDate(d.getDate()-1); state.date=todayStr(d); render(); };
+  const nd = document.getElementById("nextDay");
+  if (nd) nd.onclick = ()=>{ const d=new Date(state.date); d.setDate(d.getDate()+1); const ns=todayStr(d); if(ns<=todayStr()){state.date=ns; render();} };
+  app.querySelectorAll(".del").forEach(b=> b.onclick = ()=>{ removeEntry(b.dataset.id); });
+  app.querySelectorAll(".histrow").forEach(r=> r.onclick = ()=>{ state.date=r.dataset.date; render(); });
+
+  const wSave = document.getElementById("wSave");
+  if (wSave) wSave.onclick = ()=>{
+    const v = parseFloat(document.getElementById("wInput").value.replace(",","."));
+    if (v>0 && v<400){ state.weights[state.date]=Math.round(v*10)/10; lsSet("kt_weights",state.weights); render(); }
+  };
+}
+
+function removeEntry(id){
+  state.entries[state.date] = dayEntries().filter(e=>String(e.id)!==String(id));
+  lsSet("kt_entries",state.entries); render();
+}
+
+// ---------- Sheet ----------
+const overlay = document.getElementById("overlay");
+const fName=document.getElementById("fName"), fKcal=document.getElementById("fKcal"),
+      fMenge=document.getElementById("fMenge"), fEiweiss=document.getElementById("fEiweiss"),
+      searchInput=document.getElementById("searchInput"), suggest=document.getElementById("suggest"),
+      calc=document.getElementById("calc"), chipsEl=document.getElementById("chips"),
+      saveBtn=document.getElementById("saveBtn"), saveCustom=document.getElementById("saveCustom");
+
+document.getElementById("fab").onclick = openSheet;
+overlay.onclick = (e)=>{ if(e.target===overlay) closeSheet(); };
+function openSheet(){ overlay.classList.add("open"); switchTab("search"); resetForm(); }
+function closeSheet(){ overlay.classList.remove("open"); }
+function resetForm(){ fName.value=""; fKcal.value=""; fMenge.value="100"; fEiweiss.value=""; searchInput.value=""; selKat="🍎 Obst"; saveCustom.checked=false; renderSuggest(""); renderChips(); updateCalc(); validate(); }
+
+function switchTab(which){
+  const s = which==="search";
+  document.getElementById("tabSearch").classList.toggle("active",s);
+  document.getElementById("tabManual").classList.toggle("active",!s);
+  document.getElementById("searchPane").style.display = s?"block":"none";
+}
+document.getElementById("tabSearch").onclick = ()=>switchTab("search");
+document.getElementById("tabManual").onclick = ()=>switchTab("manual");
+
+function renderChips(){
+  chipsEl.innerHTML = Object.keys(KAT).map(k=>{ const c=KAT[k], on=k===selKat;
+    return `<button class="chip" data-k="${k}" style="${on?`background:${c}33;border-color:${c};color:${c}`:""}">${k}</button>`; }).join("");
+  chipsEl.querySelectorAll(".chip").forEach(b=> b.onclick=()=>{ selKat=b.dataset.k; renderChips(); });
+}
+
+function foodRowHtml(f, custSet){
+  const c = KAT[f[3]]||"#b8b8b8";
+  const isC = custSet.has(f[0].toLowerCase());
+  const fav = isFav(f[0]);
+  const d = `data-n="${esc(f[0])}" data-k="${f[1]}" data-p="${f[2]}" data-c="${esc(f[3])}"`;
+  return `<div class="sg" ${d}>
+    <div class="ico" style="width:30px;height:30px;font-size:15px;background:${c}22;border:1px solid ${c}44">${f[3].split(" ")[0]}</div>
+    <div class="n">${esc(f[0])}${isC?' <span class="badge">📌</span>':''}</div>
+    <div class="m">${f[1]} kcal<br>🥩 ${f[2]}g</div>
+    <button class="star" ${d}>${fav?"★":"☆"}</button>
+  </div>`;
+}
+
+function renderSuggest(q){
+  q = (q||"").trim().toLowerCase();
+  const cs = customSet();
+  let html = "";
+  if (!q){
+    if (state.favs.length){ html += `<div class="seclabel">⭐ Favoriten</div>` + state.favs.map(f=>foodRowHtml(f,cs)).join(""); }
+    if (state.recent.length){ html += `<div class="seclabel">🕒 Zuletzt gegessen</div>` + state.recent.slice(0,8).map(f=>foodRowHtml(f,cs)).join(""); }
+    html += `<div class="seclabel">Vorschläge</div>` + allFoods().slice(0,8).map(f=>foodRowHtml(f,cs)).join("");
+  } else {
+    const list = allFoods().filter(f=>f[0].toLowerCase().includes(q)).slice(0,40);
+    if (!list.length) html = `<div class="sg"><div class="n" style="color:var(--muted2)">Nichts gefunden – „Manuell" eintragen und ggf. als eigenes Lebensmittel merken</div></div>`;
+    else html = list.map(f=>foodRowHtml(f,cs)).join("");
+  }
+  suggest.innerHTML = html;
+
+  suggest.querySelectorAll(".sg").forEach(el=>{
+    if (!el.dataset.n) return;
+    el.onclick = (ev)=>{
+      if (ev.target.classList.contains("star")) return;
+      fName.value = el.dataset.n; fKcal.value = el.dataset.k; fEiweiss.value = el.dataset.p; selKat = el.dataset.c;
+      if (!fMenge.value) fMenge.value = "100";
+      renderChips(); updateCalc(); validate();
+      searchInput.value=""; renderSuggest("");
+      try { fMenge.focus(); } catch(e){}
+    };
+  });
+  suggest.querySelectorAll(".star").forEach(b=>{
+    b.onclick = (ev)=>{ ev.stopPropagation(); toggleFav([b.dataset.n, parseFloat(b.dataset.k), parseFloat(b.dataset.p), b.dataset.c]); renderSuggest(searchInput.value); };
+  });
+}
+
+function toggleFav(f){
+  const i = state.favs.findIndex(x=>x[0].toLowerCase()===f[0].toLowerCase());
+  if (i>=0) state.favs.splice(i,1); else state.favs.unshift(f);
+  lsSet("kt_favs", state.favs);
+}
+
+searchInput.oninput = ()=> renderSuggest(searchInput.value);
+
+function updateCalc(){
+  const k=parseFloat(fKcal.value), m=parseFloat(fMenge.value);
+  if (k>=0 && m>0){
+    const tot=Math.round(k*m/100), ei=fEiweiss.value?Math.round(parseFloat(fEiweiss.value)*m/100):0;
+    calc.innerHTML = `<div class="calcbox">= ${tot} kcal gesamt${ei?` · 🥩 ${ei}g Eiweiß`:""}</div>`;
+  } else calc.innerHTML="";
+}
+function validate(){ saveBtn.disabled = !(fName.value.trim() && fKcal.value!=="" && parseFloat(fMenge.value)>0); }
+[fName,fKcal,fMenge,fEiweiss].forEach(el=> el.oninput = ()=>{ updateCalc(); validate(); });
+
+saveBtn.onclick = ()=>{
+  const k=parseFloat(fKcal.value), m=parseFloat(fMenge.value)||100, p=fEiweiss.value?parseFloat(fEiweiss.value):0;
+  const name = fName.value.trim();
+  const food = [name, k, p, selKat];
+
+  const entry = { id:Date.now(), name, kcalPro100:k, menge:m, kcal:Math.round(k*m/100),
+    eiweiss:p?Math.round(p*m/100):0, kategorie:selKat,
+    zeit:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) };
+  if(!state.entries[state.date]) state.entries[state.date]=[];
+  state.entries[state.date].push(entry);
+  lsSet("kt_entries", state.entries);
+
+  // recent aktualisieren
+  state.recent = state.recent.filter(f=>f[0].toLowerCase()!==name.toLowerCase());
+  state.recent.unshift(food);
+  state.recent = state.recent.slice(0,20);
+  lsSet("kt_recent", state.recent);
+
+  // eigenes Lebensmittel merken
+  if (saveCustom.checked){
+    const exists = allFoods().some(f=>f[0].toLowerCase()===name.toLowerCase());
+    if (!exists){ state.custom.push(food); lsSet("kt_custom", state.custom); }
+  }
+
+  closeSheet(); render();
+};
+
+// install hint
+(function(){
+  const inStandalone = window.navigator.standalone===true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  const dismissed = lsGet("kt_hint_dismissed",false);
+  const hint = document.getElementById("installHint");
+  if (hint && !inStandalone && !dismissed){
+    hint.style.display="block";
+    document.getElementById("hintClose").onclick = ()=>{ hint.style.display="none"; lsSet("kt_hint_dismissed",true); };
+  }
+})();
+
+renderChips();
+renderSuggest("");
+render();
+</script>
+</body>
+</html>
