@@ -79,10 +79,8 @@ canvas{width:100%;height:160px;background:rgba(255,255,255,.025);border-radius:1
 .toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:rgba(20,24,32,.96);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:14px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:.3s;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
-<!-- Firebase (optional Cloud-Sync). Lädt nur online; App funktioniert auch ohne. -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Supabase (optional Cloud-Sync). Lädt nur online; App funktioniert auch ohne. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -522,52 +520,58 @@ const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 const save=(k,v)=>{localStorage.setItem(k,JSON.stringify(v)); if(k==="jbf_db") scheduleCloudPush();};
 
-// ===== Cloud-Sync (Firebase) – optional =====
-// 1) Lege ein Firebase-Projekt an (console.firebase.google.com)
-// 2) Aktiviere Authentication → E-Mail/Passwort  und  Firestore Database
-// 3) Trage hier die Werte aus Projekteinstellungen → "Web-App" ein:
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: ""
+// ===== Cloud-Sync (Supabase) – optional =====
+// 1) Projekt anlegen auf supabase.com  → Project URL und anon public key kopieren
+//    (Project Settings → API)
+// 2) Tabelle + Sicherheitsregeln anlegen (SQL in der README)
+// 3) Hier eintragen:
+const supabaseConfig = {
+  url: "",
+  anonKey: ""
 };
+let sb = null;
 let cloud = { on:false, user:null };
 let cloudTimer = null;
-function cloudConfigured(){ return typeof firebase!=="undefined" && !!firebaseConfig.apiKey; }
+function cloudConfigured(){ return typeof supabase!=="undefined" && !!supabaseConfig.url && !!supabaseConfig.anonKey; }
 function cloudReady(){ return cloud.on && cloud.user; }
 function initCloud(){
   if(!cloudConfigured()) return;
   try{
-    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    try{ firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+    sb = supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
     cloud.on = true;
-    firebase.auth().onAuthStateChanged(u=>{ cloud.user=u; if(u){ cloudPull(true); } render(); });
+    sb.auth.onAuthStateChange((_event, session)=>{ cloud.user = session ? session.user : null; if(cloud.user) cloudPull(true); render(); });
   }catch(e){ cloud.on=false; }
 }
 function cloudRegister(){
-  const e=($("cemail").value||"").trim(), p=$("cpass").value||"";
   if(!cloudConfigured()){ alert("Cloud ist noch nicht konfiguriert."); return; }
-  firebase.auth().createUserWithEmailAndPassword(e,p).then(()=>cloudPush()).catch(err=>alert(err.message));
+  const email=($("cemail").value||"").trim(), password=$("cpass").value||"";
+  sb.auth.signUp({email,password}).then(({data,error})=>{
+    if(error){ alert(error.message); return; }
+    if(data.session){ cloud.user=data.session.user; cloudPush(); render(); }
+    else { toast("✉️ Bestätige deine E-Mail"); }
+  });
 }
 function cloudSignIn(){
-  const e=($("cemail").value||"").trim(), p=$("cpass").value||"";
   if(!cloudConfigured()){ alert("Cloud ist noch nicht konfiguriert."); return; }
-  firebase.auth().signInWithEmailAndPassword(e,p).catch(err=>alert(err.message));
+  const email=($("cemail").value||"").trim(), password=$("cpass").value||"";
+  sb.auth.signInWithPassword({email,password}).then(({data,error})=>{
+    if(error){ alert(error.message); return; }
+    cloud.user=data.user; cloudPull(true); render();
+  });
 }
-function cloudLogout(){ if(cloudConfigured()) firebase.auth().signOut(); }
+function cloudLogout(){ if(cloudConfigured()&&sb) sb.auth.signOut().then(()=>{ cloud.user=null; render(); }); }
 function cloudPush(){
   if(!cloudReady()) return;
-  firebase.firestore().collection("backups").doc(cloud.user.uid)
-    .set({ db: JSON.stringify(db), updated: Date.now() })
-    .then(()=>toast("☁️ Hochgeladen")).catch(err=>alert(err.message));
+  sb.from("backups").upsert({ user_id: cloud.user.id, data: db, updated: new Date().toISOString() })
+    .then(({error})=>{ if(error) alert(error.message); else toast("☁️ Hochgeladen"); });
 }
 function cloudPull(silent){
   if(!cloudReady()) return;
-  firebase.firestore().collection("backups").doc(cloud.user.uid).get().then(d=>{
-    if(d.exists && d.data() && d.data().db){ db=JSON.parse(d.data().db); save("jbf_db",db); if(!silent)toast("☁️ Heruntergeladen"); render(); }
+  sb.from("backups").select("data").eq("user_id", cloud.user.id).maybeSingle().then(({data,error})=>{
+    if(error){ if(!silent) alert(error.message); return; }
+    if(data && data.data){ db=data.data; localStorage.setItem("jbf_db",JSON.stringify(db)); if(!silent)toast("☁️ Heruntergeladen"); render(); }
     else if(!silent){ alert("Noch kein Cloud-Backup vorhanden – lade zuerst hoch."); }
-  }).catch(err=>{ if(!silent)alert(err.message); });
+  });
 }
 function scheduleCloudPush(){ if(!cloudReady()) return; clearTimeout(cloudTimer); cloudTimer=setTimeout(cloudPush,1500); }
 function toast(msg){
@@ -580,7 +584,7 @@ function toast(msg){
 }
 function cloudCard(){
   if(!cloudConfigured()){
-    return `<div class="card"><div class="label">☁️ Cloud-Sync</div><p class="note" style="margin-top:8px">Noch nicht eingerichtet. Lege ein kostenloses Firebase-Projekt an und trage die Konfig im Code ein (Anleitung in der README). Danach kannst du dich hier anmelden und deine Daten geräteübergreifend synchronisieren.</p></div>`;
+    return `<div class="card"><div class="label">☁️ Cloud-Sync</div><p class="note" style="margin-top:8px">Noch nicht eingerichtet. Lege ein kostenloses Supabase-Projekt an und trage Project-URL + anon-Key im Code ein (Anleitung in der README). Danach kannst du dich hier anmelden und deine Daten zwischen iPhone & Android synchronisieren.</p></div>`;
   }
   if(cloud.user){
     return `<div class="card"><div class="label">☁️ Cloud-Sync</div><p class="note" style="margin:8px 0">Angemeldet als <b>${cloud.user.email}</b>. Änderungen werden automatisch hochgeladen.</p><div class="row"><button class="secondary" style="flex:1" onclick="cloudPush()">Jetzt hochladen</button><button class="secondary" style="flex:1" onclick="cloudPull()">Herunterladen</button></div><div style="height:10px"></div><button class="secondary danger" onclick="cloudLogout()">Cloud abmelden</button></div>`;
