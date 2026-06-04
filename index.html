@@ -72,6 +72,8 @@ select option{background:#111;color:white}
 .emojis{display:flex;flex-wrap:wrap;gap:6px}
 .emoji{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--card);font-size:19px;line-height:1;display:grid;place-items:center}
 .emoji.sel{border-color:var(--green);background:rgba(48,209,88,.16)}
+.ob{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;font-size:14px;line-height:1.4}
+.ob-i{font-size:22px;flex:0 0 28px;text-align:center}
 .login{min-height:100vh;display:grid;place-items:center;padding:20px}
 .loginbox{width:100%;max-width:430px}
 .logo-big{width:86px;height:86px;border-radius:27px;overflow:hidden;display:grid;place-items:center;margin:0 auto 18px;box-shadow:0 16px 40px rgba(48,209,88,.3)}
@@ -684,7 +686,25 @@ function appShell(content){
  <button class="tab ${page==='weight'?'active':''}" onclick="page='weight';render()"><b>⚖️</b>Gewicht</button>
  <button class="tab ${page==='stats'?'active':''}" onclick="page='stats';render()"><b>📈</b>Analyse</button>
  <button class="tab ${page==='settings'?'active':''}" onclick="page='settings';render()"><b>⚙️</b>Profil</button>
- </div></nav>${foodSheet()}`;
+ </div></nav>${foodSheet()}${onboardOverlay()}`;
+}
+function onboarded(){ return load("jbf_onboarded",false); }
+function finishOnboard(){ save("jbf_onboarded",true); render(); }
+function showOnboardAgain(){ save("jbf_onboarded",false); page="home"; render(); }
+function onboardOverlay(){
+ if(onboarded()) return "";
+ return `<div class="overlay open" id="onboard" style="align-items:center;justify-content:center">
+   <div class="sheet" style="border-radius:24px;max-width:440px;margin:auto;max-height:86vh;overflow:auto">
+     <h2 style="margin-bottom:4px">Willkommen bei JB Fitness 👋</h2>
+     <p class="muted" style="margin-bottom:16px">Kurz erklärt, wie's funktioniert:</p>
+     <div class="ob"><div class="ob-i">🔥</div><div><b>Dein Tagesbudget</b><br><span class="muted">Die Kalorienzahl ist dein <b>Limit für den Tag</b>. Bleib <b>auf oder unter</b> diesem Wert, um abzunehmen – er liegt schon rund 500 kcal unter deinem Gesamtbedarf.</span></div></div>
+     <div class="ob"><div class="ob-i">🥩</div><div><b>Protein-Ziel</b><br><span class="muted">Versuche, dein Proteinziel zu erreichen – das hilft beim Muskelerhalt.</span></div></div>
+     <div class="ob"><div class="ob-i">➕</div><div><b>Essen eintragen</b><br><span class="muted">Über das Plus: suchen, Barcode scannen oder manuell. Gramm eingeben – Kalorien & Protein rechnen sich automatisch aus.</span></div></div>
+     <div class="ob"><div class="ob-i">⭐</div><div><b>Favoriten</b><br><span class="muted">Häufiges als Schnell-Button speichern (im Profil bearbeitbar).</span></div></div>
+     <div class="ob"><div class="ob-i">⚖️</div><div><b>Gewicht & Verlauf</b><br><span class="muted">Regelmäßig dein Gewicht eintragen und den Trend sehen.</span></div></div>
+     <div style="height:8px"></div>
+     <button class="primary" onclick="finishOnboard()">Los geht's</button>
+   </div></div>`;
 }
 let pendingKey=null;
 function loginScreen(){
@@ -752,11 +772,11 @@ function createProfile(){
 function home(){
  const s=stats(), pct=Math.min(100,s.kcal/s.t.calories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
  const d=new Date(date+"T12:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit"});
- return appShell(`<div class="card"><div class="label">${d}</div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))}</div><div class="muted">kcal verbleibend</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
+ return appShell(`<div class="card"><div class="label">${d}</div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))}</div><div class="muted">kcal verbleibend ${s.rem>=0?"– bleib auf/unter dem Budget zum Abnehmen":"– Budget überschritten"}</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
  <div class="grid3" style="margin-top:14px"><div class="kpi"><div class="label">Gegessen</div><div class="mid">${s.kcal}</div></div><div class="kpi"><div class="label">Ziel</div><div class="mid">${s.t.calories}</div></div><div class="kpi"><div class="label">TDEE</div><div class="mid">${s.t.tdee}</div></div></div></div>
  <div class="card sm"><div class="label">Protein</div><div class="row" style="align-items:end;justify-content:space-between"><div class="mid">${s.prot}g / ${s.t.protein}g</div><div class="muted">${Math.max(0,s.prem)}g offen</div></div><div class="progress"><div class="fill" style="width:${ppct}%;background:linear-gradient(90deg,var(--orange),var(--green))"></div></div></div>
  <div class="quick">${ensureFavs().map((f,i)=>`<button class="chip" onclick="quickFav(${i})">${f.icon||"🍽️"} ${f.name}${f.amount?` ${f.amount}g`:""}</button>`).join("")||'<span class="muted" style="font-size:13px">Noch keine Favoriten</span>'}<button class="chip" style="border-style:dashed" onclick="page='settings';render();setTimeout(()=>{var el=document.getElementById('favEditor');if(el)el.scrollIntoView({behavior:'smooth'});},60)">✏️ Bearbeiten</button></div>
- <div class="label" style="margin:18px 0 10px">Heute gegessen</div><div class="list">${dayEntries().length?dayEntries().map(e=>`<div class="item"><div class="ico">${e.icon||"🍽️"}</div><div class="item-main"><div class="item-title">${e.name}</div><div class="item-sub">${e.amount}g · ${e.protein}g Protein</div></div><b>${e.kcal}</b><button class="del" onclick="delEntry('${e.id}')">×</button></div>`).join(""):`<div class="card sm muted" style="text-align:center">Noch keine Einträge</div>`}</div>`);
+ <div class="label" style="margin:18px 0 10px">Heute gegessen <span class="muted" style="font-weight:400;font-size:12px">(zum Bearbeiten antippen)</span></div><div class="list">${dayEntries().length?dayEntries().map(e=>`<div class="item" style="cursor:pointer" onclick="editEntry('${e.id}')"><div class="ico">${e.icon||"🍽️"}</div><div class="item-main"><div class="item-title">${e.name}</div><div class="item-sub">${e.amount}g · ${e.protein}g Protein</div></div><b>${e.kcal}</b><button class="del" onclick="event.stopPropagation();delEntry('${e.id}')">×</button></div>`).join(""):`<div class="card sm muted" style="text-align:center">Noch keine Einträge</div>`}</div>`);
 }
 function weight(){
  const u=user(), w=u.weights, keys=Object.keys(w).sort();
@@ -838,6 +858,7 @@ function settings(){
  ${cloudCard()}
  <div class="card"><div class="label">Datensicherung</div><div style="height:12px"></div><button class="secondary" onclick="exportData()">Backup exportieren</button><div style="height:10px"></div><input type="file" id="importFile" accept=".json" onchange="importData(event)"></div>
  ${profilesCard()}
+ <div class="card"><div class="label">Hilfe</div><div style="height:12px"></div><button class="secondary" onclick="showOnboardAgain()">Einführung erneut anzeigen</button></div>
  <div class="card"><button class="secondary danger" onclick="logout()">Abmelden</button></div>`);
 }
 function savePin(){ user().pass=($("ppin").value||"").trim(); save("jbf_db",db); alert(user().pass?"PIN gesetzt.":"PIN entfernt."); }
@@ -846,31 +867,60 @@ function logout(){ if(cloudConfigured()){ cloudLogout(); } else { db.active=null
 function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="jbfitness-backup.json";a.click();}
 function importData(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save("jbf_db",db);render()}catch{alert("Backup konnte nicht gelesen werden.")}};r.readAsText(f);}
 function foodSheet(){
- return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div><h2>Eintrag hinzufügen</h2>
+ return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div><h2 id="foodTitle">Eintrag hinzufügen</h2>
  <div style="height:12px"></div>
  <div class="row"><button class="secondary" style="flex:1" onclick="startScan()">📷 Barcode scannen</button><label class="secondary" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer">📸 Foto<input type="file" accept="image/*" capture="environment" onchange="scanPhoto(event)" style="display:none"></label></div>
  <div id="scanArea" style="display:none;margin:10px 0;border-radius:14px;overflow:hidden"></div>
  <button id="scanStop" class="secondary danger" style="display:none;width:100%;margin-bottom:10px" onclick="stopScan()">Scan abbrechen</button>
  <div style="height:6px"></div>
  <input id="foodSearch" placeholder="Lebensmittel suchen" oninput="renderFoodList()"><div id="foodList" class="list" style="margin:12px 0"></div>
- <div class="grid2"><input id="mname" placeholder="Name"><input id="mamount" type="number" placeholder="Gramm" value="100"></div><div style="height:10px"></div>
- <div class="grid2"><input id="mkcal" type="number" placeholder="kcal / 100g"><input id="mprot" type="number" placeholder="Protein / 100g"></div><div style="height:10px"></div>
+ <div class="grid2"><input id="mname" placeholder="Name"><input id="mamount" type="number" inputmode="decimal" placeholder="Gramm" value="100" oninput="updateMCalc()"></div><div style="height:10px"></div>
+ <div class="grid2"><input id="mkcal" type="number" inputmode="decimal" placeholder="kcal / 100g" oninput="updateMCalc()"><input id="mprot" type="number" inputmode="decimal" placeholder="Protein / 100g" oninput="updateMCalc()"></div>
+ <div id="mcalc" class="card sm" style="text-align:center;margin:10px 0;display:none"></div>
  <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><input type="checkbox" id="msave" style="width:20px;height:20px"> 📌 Als Artikel dauerhaft in meine Datenbank speichern</label>
- <button class="primary" onclick="addManual()">Hinzufügen</button></div></div>`;
+ <button class="primary" id="foodAddBtn" onclick="addManual()">Hinzufügen</button></div></div>`;
 }
-function openFood(){ $("foodOverlay").classList.add("open"); renderFoodList();}
+let editId=null;
+function updateMCalc(){
+ const a=+($("mamount")?.value||0), k=+($("mkcal")?.value||0), p=+($("mprot")?.value||0);
+ const el=$("mcalc"); if(!el)return;
+ if(a>0 && (k||p)){ el.style.display="block"; el.innerHTML=`für <b>${a} g</b> = <b style="color:var(--green)">${Math.round(k*a/100)}</b> kcal · <b style="color:var(--orange)">${Math.round(p*a/100*10)/10}</b> g Protein`; }
+ else { el.style.display="none"; el.innerHTML=""; }
+}
+function resetFoodFields(){ ["mname","mkcal","mprot"].forEach(id=>{const e=$(id);if(e)e.value="";}); const a=$("mamount");if(a)a.value="100"; const s=$("msave");if(s)s.checked=false; const sr=$("foodSearch");if(sr)sr.value=""; const b=$("foodAddBtn");if(b)b.textContent="Hinzufügen"; const t=$("foodTitle");if(t)t.textContent="Eintrag hinzufügen"; updateMCalc(); }
+function openFood(){ editId=null; resetFoodFields(); $("foodOverlay").classList.add("open"); renderFoodList();}
 function closeFood(){ stopScan(); $("foodOverlay").classList.remove("open");}
+function editEntry(id){
+ const e=dayEntries().find(x=>x.id===id); if(!e)return;
+ editId=id;
+ $("foodOverlay").classList.add("open"); renderFoodList();
+ $("mname").value=e.name; $("mamount").value=e.amount;
+ $("mkcal").value=(e.k100!=null)?e.k100:(e.amount?Math.round(e.kcal/e.amount*100):e.kcal);
+ $("mprot").value=(e.p100!=null)?e.p100:(e.amount?Math.round(e.protein/e.amount*100*10)/10:e.protein);
+ const s=$("msave"); if(s)s.checked=false;
+ const b=$("foodAddBtn"); if(b)b.textContent="Speichern";
+ const t=$("foodTitle"); if(t)t.textContent="Eintrag bearbeiten";
+ updateMCalc();
+}
 function allFoods(){ return FOODS.concat(Array.isArray(user().custom)?user().custom:[]); }
 function renderFoodList(){ const q=($("foodSearch")?.value||"").toLowerCase(); const list=allFoods().filter(f=>f[0].toLowerCase().includes(q)).slice(0,12); $("foodList").innerHTML=list.map(f=>`<button class="item" onclick="selectFood('${f[0].replaceAll("'","\\'")}')"><div class="ico">${f[3]||"🍽️"}</div><div class="item-main" style="text-align:left"><div class="item-title">${f[0]}</div><div class="item-sub">${f[1]} kcal · ${f[2]}g Protein / 100g</div></div></button>`).join("");}
-function selectFood(n){ const f=allFoods().find(x=>x[0]===n); if(f){ $("mname").value=f[0]; $("mkcal").value=f[1]; $("mprot").value=f[2]; }}
+function selectFood(n){ const f=allFoods().find(x=>x[0]===n); if(f){ $("mname").value=f[0]; $("mkcal").value=f[1]; $("mprot").value=f[2]; updateMCalc(); }}
 function addManual(){
  const name=$("mname").value||"Eintrag",amount=+$("mamount").value||100,k=+$("mkcal").value||0,p=+$("mprot").value||0;
  if($("msave")&&$("msave").checked){
    if(!Array.isArray(user().custom)) user().custom=[];
    if(!allFoods().some(f=>f[0].toLowerCase()===name.toLowerCase())){ user().custom.push([name,k,p,"🍽️"]); }
  }
- addEntry({id:uid(),name,amount,kcal:Math.round(k*amount/100),protein:Math.round(p*amount/100),icon:"🍽️"});
- closeFood();
+ const kcal=Math.round(k*amount/100), protein=Math.round(p*amount/100);
+ if(editId){
+   const arr=dayEntries(), i=arr.findIndex(x=>x.id===editId);
+   if(i>=0) arr[i]={...arr[i],name,amount,kcal,protein,k100:k,p100:p};
+   editId=null;
+ } else {
+   if(!user().entries[date]) user().entries[date]=[];
+   user().entries[date].push({id:uid(),name,amount,kcal,protein,k100:k,p100:p,icon:"🍽️"});
+ }
+ save("jbf_db",db); closeFood(); render();
 }
 
 // ===== Barcode-Scanner (Live + Foto-Fallback) + Open Food Facts =====
@@ -913,6 +963,7 @@ function lookupBarcode(code){
       if(kcal!=null)$("mkcal").value=Math.round(kcal);
       if(prot!=null)$("mprot").value=Math.round(prot*10)/10;
       if($("msave"))$("msave").checked=true;
+      updateMCalc();
       toast("✅ "+name);
     } else {
       $("mname").value="Artikel "+code; if($("msave"))$("msave").checked=true;
@@ -920,7 +971,7 @@ function lookupBarcode(code){
     }
   }).catch(()=>{ alert("Produktabruf fehlgeschlagen. Bist du online?"); });
 }
-function quickFood(n,amount){const f=FOODS.find(x=>x[0]===n); if(f)addEntry({id:uid(),name:f[0],amount,kcal:Math.round(f[1]*amount/100),protein:Math.round(f[2]*amount/100),icon:f[3]});}
+function quickFood(n,amount){const f=FOODS.find(x=>x[0]===n); if(f)addEntry({id:uid(),name:f[0],amount,kcal:Math.round(f[1]*amount/100),protein:Math.round(f[2]*amount/100),k100:f[1],p100:f[2],icon:f[3]});}
 
 // ===== Eigene Favoriten / Schnellauswahl =====
 function escA(s){return String(s).replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;");}
@@ -938,7 +989,7 @@ function ensureFavs(){
 function quickFav(i){
  const f=ensureFavs()[i]; if(!f)return;
  const a=+f.amount||100;
- addEntry({id:uid(),name:f.name,amount:a,kcal:Math.round((+f.kcal||0)*a/100),protein:Math.round((+f.protein||0)*a/100),icon:f.icon||"🍽️"});
+ addEntry({id:uid(),name:f.name,amount:a,kcal:Math.round((+f.kcal||0)*a/100),protein:Math.round((+f.protein||0)*a/100),k100:+f.kcal||0,p100:+f.protein||0,icon:f.icon||"🍽️"});
 }
 function readFavInputs(){
  const u=user(); if(!Array.isArray(u.favs)) return;
@@ -956,24 +1007,24 @@ function favEditorCard(){
  const favs=ensureFavs();
  const rows=favs.map((f,i)=>{
    const set=[...FAV_EMOJIS]; if(f.icon && !set.includes(f.icon)) set.unshift(f.icon);
-   const picker=set.map(e=>`<button class="emoji ${f.icon===e?'sel':''}" onclick="setFavIcon(${i},'${e}')">${e}</button>`).join("");
-   return `<div class="card sm" style="margin-bottom:10px">
-   <div class="label" style="margin-bottom:6px">Name</div><input id="fav${i}name" value="${escA(f.name)}">
-   <div style="height:8px"></div>
-   <div class="label" style="margin-bottom:6px">Icon</div><div class="emojis">${picker}</div><input id="fav${i}icon" type="hidden" value="${escA(f.icon||"🍽️")}">
-   <div style="height:10px"></div>
-   <div class="row">
-     <div class="col"><div class="label" style="margin-bottom:6px">kcal/100g</div><input id="fav${i}kcal" type="number" inputmode="numeric" value="${f.kcal||0}"></div>
-     <div class="col"><div class="label" style="margin-bottom:6px">Protein/100g</div><input id="fav${i}prot" type="number" inputmode="decimal" value="${f.protein||0}"></div>
-     <div class="col"><div class="label" style="margin-bottom:6px">Menge (g)</div><input id="fav${i}amt" type="number" inputmode="numeric" value="${f.amount||100}"></div>
+   const opts=set.map(e=>`<option value="${e}" ${f.icon===e?"selected":""}>${e}</option>`).join("");
+   return `<div class="card sm" style="margin-bottom:8px">
+   <div class="row" style="gap:8px;align-items:center">
+     <select id="fav${i}icon" style="width:62px;text-align:center;padding:10px 6px">${opts}</select>
+     <input id="fav${i}name" value="${escA(f.name)}" placeholder="Name" style="flex:1">
+     <button class="del" onclick="removeFav(${i})" title="Entfernen">×</button>
    </div>
-   <div style="height:8px"></div>
-   <button class="secondary danger" onclick="removeFav(${i})">Entfernen</button>
+   <div style="height:6px"></div>
+   <div class="row" style="gap:8px">
+     <input id="fav${i}kcal" type="number" inputmode="numeric" placeholder="kcal/100g" value="${f.kcal||0}">
+     <input id="fav${i}prot" type="number" inputmode="decimal" placeholder="Prot/100g" value="${f.protein||0}">
+     <input id="fav${i}amt" type="number" inputmode="numeric" placeholder="Menge g" value="${f.amount||100}">
+   </div>
  </div>`;
  }).join("");
- return `<div class="card" id="favEditor"><div class="label">⭐ Meine Favoriten (Schnellauswahl)</div><p class="note" style="margin:8px 0 12px">Diese Buttons erscheinen auf „Heute". Werte gelten pro 100g, „Menge" ist die Standardportion beim Antippen.</p>
-   ${rows||'<p class="muted">Noch keine Favoriten.</p>'}
-   <div class="row"><button class="secondary" style="flex:1" onclick="addFav()">+ Favorit</button><button class="primary" style="flex:1" onclick="saveFavs()">Favoriten speichern</button></div></div>`;
+ return `<div class="card" id="favEditor"><div class="label">⭐ Meine Favoriten (Schnellauswahl)</div><p class="note" style="margin:8px 0 12px">Erscheinen als Schnell-Buttons auf „Heute". Werte pro 100 g, „Menge" = Standardportion. Mit „+ Favorit" beliebig viele hinzufügen.</p>
+   ${rows||'<p class="muted">Noch keine Favoriten – mit „+ Favorit" anlegen.</p>'}
+   <div class="row"><button class="secondary" style="flex:1" onclick="addFav()">+ Favorit</button><button class="primary" style="flex:1" onclick="saveFavs()">Speichern</button></div></div>`;
 }
 function addEntry(e){ if(!user().entries[date])user().entries[date]=[]; user().entries[date].push(e); save("jbf_db",db); render();}
 function delEntry(id){user().entries[date]=dayEntries().filter(e=>e.id!==id);save("jbf_db",db);render();}
