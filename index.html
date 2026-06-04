@@ -62,6 +62,7 @@ select option{background:#111;color:white}
 .item-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .del{border:0;border-radius:11px;background:rgba(255,69,58,.14);color:var(--red);width:34px;height:34px;font-weight:900}
 .fab{position:fixed;right:22px;bottom:calc(86px + env(safe-area-inset-bottom));width:62px;height:62px;border:0;border-radius:24px;background:linear-gradient(135deg,var(--green),var(--blue));color:#04100a;font-size:34px;font-weight:900;box-shadow:0 18px 45px rgba(48,209,88,.35);z-index:25}
+.addtop{width:46px;height:46px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--green),var(--blue));color:#04100a;font-size:28px;font-weight:900;line-height:1;box-shadow:0 8px 22px rgba(48,209,88,.35);display:grid;place-items:center}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-end;z-index:100}
 .overlay.open{display:flex}
 .sheet{width:100%;max-width:520px;margin:0 auto;background:#10131a;border:1px solid var(--line);border-radius:28px 28px 0 0;padding:18px 16px calc(26px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
@@ -646,6 +647,13 @@ function cloudCard(){
 }
 let db=load("jbf_db",{users:{},active:null});
 let page="home", date=today(), wrange="month";
+let authView="login";
+
+function bmiVal(w,h){ if(!w||!h) return 0; return Math.round((+w/Math.pow((+h)/100,2))*10)/10; }
+function bmiCat(b){ return !b?"":b<18.5?"Untergewicht":b<25?"Normalgewicht":b<30?"Übergewicht":"Adipositas"; }
+function bmiColor(b){ return !b?"var(--muted)":b<18.5?"var(--blue)":b<25?"var(--green)":b<30?"var(--orange)":"var(--red)"; }
+const ACTS=[[1.2,"Sitzend – kaum Bewegung"],[1.375,"Leicht aktiv – 1–3×/Woche Sport"],[1.55,"Moderat aktiv – 3–5×/Woche"],[1.725,"Sehr aktiv – 6–7×/Woche"],[1.9,"Extrem aktiv – harter Sport / körperliche Arbeit"]];
+function actOptions(sel){ sel=+sel||1.55; let opts=ACTS.map(([v,l])=>`<option value="${v}" ${Math.abs(v-sel)<0.001?"selected":""}>${l}</option>`); if(!ACTS.some(([v])=>Math.abs(v-sel)<0.001)) opts.unshift(`<option value="${sel}" selected>Aktuell (×${sel})</option>`); return opts.join(""); }
 
 function calcTargets(p){
  const w=+p.weight||74,h=+p.height||173,a=+p.age||35,sex=p.sex||"m",act=+p.activity||1.45;
@@ -678,9 +686,8 @@ function stats(){
 }
 function appShell(content){
  const u=user(), s=stats();
- return `<header><div class="head"><div class="logo"><img src="icon-192.png" alt="JB"></div><div><div class="h-title">JB Fitness</div><div class="h-sub">${u.profile.name||u.name} · ${u.profile.weight||74} kg · Ziel ${s.t.calories} kcal / ${s.t.protein}g</div></div><button class="ghost" onclick="page='settings';render()">⚙️</button></div></header>
+ return `<header><div class="head"><div class="logo"><img src="icon-192.png" alt="JB"></div><div><div class="h-title">JB Fitness</div><div class="h-sub">${u.profile.name||u.name} · ${u.profile.weight||74} kg · Ziel ${s.t.calories} kcal / ${s.t.protein}g</div></div><button class="addtop" onclick="openFood()" title="Eintrag hinzufügen">+</button></div></header>
  <main class="wrap">${content}</main>
- <button class="fab" onclick="openFood()">+</button>
  <nav class="tabs"><div class="tabbar">
  <button class="tab ${page==='home'?'active':''}" onclick="page='home';render()"><b>🔥</b>Heute</button>
  <button class="tab ${page==='weight'?'active':''}" onclick="page='weight';render()"><b>⚖️</b>Gewicht</button>
@@ -706,7 +713,7 @@ function onboardOverlay(){
      <button class="primary" onclick="finishOnboard()">Los geht's</button>
    </div></div>`;
 }
-let pendingKey=null;
+let pendingKey=null, pendingProfile=null;
 function loginScreen(){
  // Wenn Cloud eingerichtet: zuerst Anmeldung mit E-Mail/Passwort – KEINE Profile sichtbar.
  if(cloudConfigured()){
@@ -720,8 +727,8 @@ function loginScreen(){
      <input id="cemail" type="email" autocomplete="email" placeholder="E-Mail" value="${escA(sv.email||"")}"><div style="height:10px"></div>
      <input id="cpass" type="password" autocomplete="current-password" placeholder="Passwort" value="${escA(sv.password||"")}"><div style="height:12px"></div>
      <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><input type="checkbox" id="cremember" ${sv.email?"checked":""} style="width:20px;height:20px"> E-Mail & Passwort auf diesem Gerät merken</label>
-     <div class="row"><button class="secondary" style="flex:1" onclick="cloudSignIn()">Anmelden</button><button class="primary" style="flex:1" onclick="cloudRegister()">Registrieren</button></div>
-     <p class="note" style="margin-top:12px">Du bleibst nach dem Anmelden automatisch eingeloggt. „Merken" füllt die Felder beim nächsten Mal vor – nutze es nur auf deinem eigenen Gerät.</p>
+     <div class="row"><button class="secondary" style="flex:1" onclick="cloudSignIn()">Anmelden</button><button class="primary" style="flex:1" onclick="authView='register';render()">Registrieren</button></div>
+     <p class="note" style="margin-top:12px">Noch kein Konto? Tippe auf „Registrieren". Du bleibst nach dem Anmelden automatisch eingeloggt. „Merken" füllt die Felder beim nächsten Mal vor – nutze es nur auf deinem eigenen Gerät.</p>
    </div></div></div>`;
  }
  // Fallback ohne Cloud (z.B. offline / nicht konfiguriert): lokale Profilauswahl
@@ -749,6 +756,54 @@ function loginScreen(){
    </div>
  </div></div></div>`;
 }
+function registerScreen(){
+ const td=new Date(); td.setMonth(td.getMonth()+3); const defDate=td.toISOString().slice(0,10);
+ return `<div class="login"><div class="loginbox">
+ <div class="logo-big"><img src="icon-192.png" alt="JB"></div>
+ <h1 style="text-align:center;font-size:30px;margin-bottom:6px">Konto erstellen</h1>
+ <p class="muted" style="text-align:center;margin-bottom:18px">Ein paar Angaben für deine persönlichen Ziele</p>
+ <div class="card">
+   <div class="label" style="margin-bottom:6px">Name</div><input id="rname" placeholder="Dein Name"><div style="height:10px"></div>
+   <div class="label" style="margin-bottom:6px">E-Mail</div><input id="remail" type="email" autocomplete="email" placeholder="E-Mail"><div style="height:10px"></div>
+   <div class="label" style="margin-bottom:6px">Passwort</div><input id="rpass" type="password" autocomplete="new-password" placeholder="Passwort (mind. 6 Zeichen)"><div style="height:10px"></div>
+   <div class="label" style="margin-bottom:6px">Dein Ziel</div><select id="rgoal"><option value="lose">Abnehmen</option><option value="keep">Gewicht halten</option><option value="gain">Zunehmen</option></select><div style="height:10px"></div>
+   <div class="row"><div class="col"><div class="label" style="margin-bottom:6px">Aktuelles Gewicht (kg)</div><input id="rweight" type="number" step=".1" inputmode="decimal" placeholder="z.B. 80"></div><div class="col"><div class="label" style="margin-bottom:6px">Zielgewicht (kg)</div><input id="rgoalw" type="number" step=".1" inputmode="decimal" placeholder="z.B. 75"></div></div><div style="height:10px"></div>
+   <div class="label" style="margin-bottom:6px">Ziel erreichen bis</div><input id="rdate" type="date" value="${defDate}"><div style="height:10px"></div>
+   <div class="row"><div class="col"><div class="label" style="margin-bottom:6px">Größe (cm)</div><input id="rheight" type="number" inputmode="numeric" placeholder="z.B. 178"></div><div class="col"><div class="label" style="margin-bottom:6px">Alter</div><input id="rage" type="number" inputmode="numeric" placeholder="z.B. 30"></div></div><div style="height:10px"></div>
+   <div class="row"><div class="col"><div class="label" style="margin-bottom:6px">Geschlecht</div><select id="rsex"><option value="m">Männlich</option><option value="w">Weiblich</option></select></div><div class="col"><div class="label" style="margin-bottom:6px">Körperfett % (optional)</div><input id="rbf" type="number" step=".1" inputmode="decimal" placeholder="optional"></div></div><div style="height:10px"></div>
+   <div class="label" style="margin-bottom:6px">Aktivität</div><select id="ract">${actOptions(1.375)}</select><div style="height:14px"></div>
+   <button class="primary" onclick="registerSubmit()">Konto erstellen & loslegen</button>
+   <div style="height:10px"></div>
+   <button class="secondary" onclick="authView='login';render()">Zurück zum Login</button>
+   <p class="note" style="margin-top:12px">Dein Tagesziel berechnen wir automatisch aus diesen Angaben (zum Abnehmen ~500 kcal Defizit). Du kannst alles später im Profil ändern.</p>
+ </div></div></div>`;
+}
+function registerSubmit(){
+ if(!cloudConfigured()){ alert("Cloud ist nicht konfiguriert."); return; }
+ const email=($("remail").value||"").trim(), password=$("rpass").value||"";
+ if(!email||password.length<6){ alert("Bitte E-Mail angeben und ein Passwort mit mindestens 6 Zeichen wählen."); return; }
+ const goal=$("rgoal").value, deficit=goal==="lose"?500:goal==="gain"?-300:0;
+ const name=($("rname").value||email.split("@")[0]).trim();
+ const profile={ name, sex:$("rsex").value, age:+$("rage").value||30, height:+$("rheight").value||175,
+   weight:+$("rweight").value||80, goalWeight:+$("rgoalw").value||(+$("rweight").value||80),
+   bodyfat:$("rbf").value||"", activity:+$("ract").value||1.375, deficit, proteinFactor:2.0,
+   manualCalories:"", manualProtein:"", goal, targetDate:$("rdate").value||"" };
+ pendingProfile={ key:email.toLowerCase(), name, profile, weight:profile.weight };
+ rememberLogin(email,password);
+ sb.auth.signUp({email,password}).then(({data,error})=>{
+   if(error){ alert(error.message); return; }
+   if(data.session){ cloud.user=data.session.user; applyPendingProfile(); cloudPull(true); authView="login"; }
+   else { toast("✉️ Bestätige deine E-Mail, dann anmelden"); authView="login"; render(); }
+ });
+}
+function applyPendingProfile(){
+ if(!pendingProfile) return;
+ const pp=pendingProfile, key=pp.key;
+ db.users[key]={email:key,pass:"",name:pp.name,profile:pp.profile,entries:{},weights:{[today()]:pp.weight||74},custom:[]};
+ db.active=key;
+ localStorage.setItem("jbf_db",JSON.stringify(db));
+ pendingProfile=null;
+}
 function pickProfile(key){
  const u=db.users[key]; if(!u)return;
  if(u.pass){ pendingKey=key; $("pinBox").classList.remove("hidden"); $("newBtn").classList.add("hidden"); $("newProfileBox").classList.add("hidden"); try{$("pinInput").focus()}catch(e){} }
@@ -770,18 +825,21 @@ function createProfile(){
  db.active=key; page="home"; date=today(); save("jbf_db",db); render();
 }
 function home(){
- const s=stats(), pct=Math.min(100,s.kcal/s.t.calories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
+ const u=user(), s=stats(), pct=Math.min(100,s.kcal/s.t.calories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
+ const bmi=bmiVal(u.profile.weight,u.profile.height);
  const d=new Date(date+"T12:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit"});
- return appShell(`<div class="card"><div class="label">${d}</div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))}</div><div class="muted">kcal verbleibend ${s.rem>=0?"– bleib auf/unter dem Budget zum Abnehmen":"– Budget überschritten"}</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
- <div class="grid3" style="margin-top:14px"><div class="kpi"><div class="label">Gegessen</div><div class="mid">${s.kcal}</div></div><div class="kpi"><div class="label">Ziel</div><div class="mid">${s.t.calories}</div></div><div class="kpi"><div class="label">TDEE</div><div class="mid">${s.t.tdee}</div></div></div></div>
+ return appShell(`<div class="card"><div class="label">${d}</div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))} <span style="font-size:18px;color:var(--muted);font-weight:600">kcal</span></div><div class="muted">${s.rem>=0?"verbleibend – bleib auf/unter dem Budget zum Abnehmen":"über dem Budget"}</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
+ <div class="grid3" style="margin-top:14px"><div class="kpi"><div class="label">Gegessen</div><div class="mid">${s.kcal}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Ziel</div><div class="mid">${s.t.calories}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Verbrauch</div><div class="mid">${s.t.tdee}</div><div class="muted" style="font-size:11px">kcal (TDEE)</div></div></div></div>
  <div class="card sm"><div class="label">Protein</div><div class="row" style="align-items:end;justify-content:space-between"><div class="mid">${s.prot}g / ${s.t.protein}g</div><div class="muted">${Math.max(0,s.prem)}g offen</div></div><div class="progress"><div class="fill" style="width:${ppct}%;background:linear-gradient(90deg,var(--orange),var(--green))"></div></div></div>
+ <div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div><div class="label">BMI</div><div class="mid">${bmi||"–"}</div></div><div style="text-align:right"><div style="color:${bmiColor(bmi)};font-weight:800">${bmiCat(bmi)}</div><div class="muted" style="font-size:11px">${u.profile.height||"–"} cm · ${u.profile.weight||"–"} kg</div></div></div></div>
  <div class="quick">${ensureFavs().map((f,i)=>`<button class="chip" onclick="quickFav(${i})">${f.icon||"🍽️"} ${f.name}${f.amount?` ${f.amount}g`:""}</button>`).join("")||'<span class="muted" style="font-size:13px">Noch keine Favoriten</span>'}<button class="chip" style="border-style:dashed" onclick="page='settings';render();setTimeout(()=>{var el=document.getElementById('favEditor');if(el)el.scrollIntoView({behavior:'smooth'});},60)">✏️ Bearbeiten</button></div>
  <div class="label" style="margin:18px 0 10px">Heute gegessen <span class="muted" style="font-weight:400;font-size:12px">(zum Bearbeiten antippen)</span></div><div class="list">${dayEntries().length?dayEntries().map(e=>`<div class="item" style="cursor:pointer" onclick="editEntry('${e.id}')"><div class="ico">${e.icon||"🍽️"}</div><div class="item-main"><div class="item-title">${e.name}</div><div class="item-sub">${e.amount}g · ${e.protein}g Protein</div></div><b>${e.kcal}</b><button class="del" onclick="event.stopPropagation();delEntry('${e.id}')">×</button></div>`).join(""):`<div class="card sm muted" style="text-align:center">Noch keine Einträge</div>`}</div>`);
 }
 function weight(){
- const u=user(), w=u.weights, keys=Object.keys(w).sort();
+ const u=user(), w=u.weights, keys=Object.keys(w).sort(), h=u.profile.height;
  setTimeout(drawWeight,50);
  const last=keys.length?w[keys[keys.length-1]]:u.profile.weight, goal=u.profile.goalWeight;
+ const curBmi=bmiVal(last,h);
  const rb=(r,l)=>`<button class="chip ${wrange===r?'active':''}" onclick="setWRange('${r}')">${l}</button>`;
  const histKeys=keys.slice().reverse();
  const fmt=k=>new Date(k+"T12:00").toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"});
@@ -789,11 +847,13 @@ function weight(){
    ? `<div class="list">`+histKeys.map((k,i)=>{
        const diff = i<histKeys.length-1 ? (w[k]-w[histKeys[i+1]]) : 0;
        const dtxt = i<histKeys.length-1 ? `<span style="color:${diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)'}">${diff>0?'+':''}${diff.toFixed(1)} kg</span>` : `<span class="muted">Start</span>`;
-       return `<div class="item"><div class="ico">⚖️</div><div class="item-main"><div class="item-title">${w[k]} kg</div><div class="item-sub">${fmt(k)}</div></div>${dtxt}<button class="del" onclick="delWeight('${k}')">×</button></div>`;
+       const b=bmiVal(w[k],h);
+       return `<div class="item"><div class="ico">⚖️</div><div class="item-main"><div class="item-title">${w[k]} kg</div><div class="item-sub">${fmt(k)}${b?` · BMI ${b}`:""}</div></div>${dtxt}<button class="del" onclick="delWeight('${k}')">×</button></div>`;
      }).join("")+`</div>`
    : `<div class="card sm muted" style="text-align:center">Noch keine Gewichtseinträge</div>`;
  return appShell(`<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">Gewichtsverlauf</div><div class="quick" style="flex:0 0 auto">${rb('week','Woche')}${rb('month','Monat')}${rb('all','Alles')}</div></div>
  <div class="row" style="align-items:end;justify-content:space-between;margin-top:6px"><div class="big">${last||"-"} kg</div><div class="muted">Ziel ${goal||"-"} kg</div></div><canvas id="weightChart" width="420" height="170"></canvas></div>
+ <div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div><div class="label">Aktueller BMI</div><div class="mid">${curBmi||"–"}</div></div><div style="text-align:right"><div style="color:${bmiColor(curBmi)};font-weight:800">${bmiCat(curBmi)}</div><div class="muted" style="font-size:11px">bei ${h||"–"} cm</div></div></div></div>
  <div class="card"><div class="label">Gewicht eintragen</div><div style="height:10px"></div>
    <div class="label" style="margin-bottom:6px">Datum</div><input id="wdate" type="date" value="${today()}" max="${today()}"><div style="height:10px"></div>
    <div class="label" style="margin-bottom:6px">Gewicht (kg)</div><div class="row"><input id="wval" type="number" step="0.1" inputmode="decimal" placeholder="z.B. 73.5" value=""><button class="secondary" onclick="saveWeight()">Speichern</button></div></div>
@@ -849,7 +909,7 @@ function settings(){
  <div class="row">${fld("pweight","Gewicht (kg)",p.weight||"",'type="number" step=".1" inputmode="decimal" placeholder="z.B. 74"')}${fld("pgoal","Zielgewicht (kg)",p.goalWeight||"",'type="number" step=".1" inputmode="decimal" placeholder="z.B. 70"')}</div><div style="height:10px"></div>
  <div class="label" style="margin-bottom:6px">Körperfett % <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(optional – macht die Berechnung genauer)</span></div><input id="pbf" type="number" step=".1" inputmode="decimal" placeholder="z.B. 18 – leer lassen, wenn unbekannt" value="${p.bodyfat||""}"><div style="height:10px"></div>
  <div class="label" style="margin-bottom:6px">Geschlecht</div><select id="psex"><option value="m" ${p.sex==="m"?"selected":""}>Männlich</option><option value="w" ${p.sex==="w"?"selected":""}>Weiblich</option></select><div style="height:10px"></div>
- <div class="label" style="margin-bottom:6px">Aktivität</div><select id="pact"><option value="1.25" ${p.activity==1.25?"selected":""}>Wenig aktiv</option><option value="1.45" ${p.activity==1.45?"selected":""}>Moderat aktiv</option><option value="1.65" ${p.activity==1.65?"selected":""}>Sportlich aktiv</option></select><div style="height:14px"></div>
+ <div class="label" style="margin-bottom:6px">Aktivität</div><select id="pact">${actOptions(p.activity)}</select><div style="height:14px"></div>
  <div class="grid2"><div class="kpi"><div class="label">Auto-Kalorien</div><div class="mid">${t.calories}</div></div><div class="kpi"><div class="label">Auto-Protein</div><div class="mid">${t.protein}g</div></div></div><div style="height:10px"></div>
  <div class="row">${fld("pcal","Kalorien manuell",p.manualCalories||"",'type="number" inputmode="numeric" placeholder="optional"')}${fld("ppro","Protein manuell (g)",p.manualProtein||"",'type="number" inputmode="numeric" placeholder="optional"')}</div>
  <p class="note" style="margin-top:10px">Manuelle Felder leer lassen = automatische Berechnung. Aktuell verwendet: <b>${t.method}</b>. Grundumsatz ${t.bmr} · Gesamtumsatz ${t.tdee} kcal. Mit Körperfett % wird die genauere Katch-McArdle-Formel verwendet.</p><div style="height:12px"></div><button class="primary" onclick="saveProfile()">Profil speichern</button></div>
@@ -1016,9 +1076,9 @@ function favEditorCard(){
    </div>
    <div style="height:6px"></div>
    <div class="row" style="gap:8px">
-     <input id="fav${i}kcal" type="number" inputmode="numeric" placeholder="kcal/100g" value="${f.kcal||0}">
-     <input id="fav${i}prot" type="number" inputmode="decimal" placeholder="Prot/100g" value="${f.protein||0}">
-     <input id="fav${i}amt" type="number" inputmode="numeric" placeholder="Menge g" value="${f.amount||100}">
+     <div class="col"><div class="muted" style="font-size:11px;margin-bottom:4px">Kalorien / 100 g</div><input id="fav${i}kcal" type="number" inputmode="numeric" placeholder="kcal" value="${f.kcal||0}"></div>
+     <div class="col"><div class="muted" style="font-size:11px;margin-bottom:4px">Eiweiß / 100 g</div><input id="fav${i}prot" type="number" inputmode="decimal" placeholder="g" value="${f.protein||0}"></div>
+     <div class="col"><div class="muted" style="font-size:11px;margin-bottom:4px">Menge</div><input id="fav${i}amt" type="number" inputmode="numeric" placeholder="g" value="${f.amount||100}"></div>
    </div>
  </div>`;
  }).join("");
@@ -1030,13 +1090,26 @@ function addEntry(e){ if(!user().entries[date])user().entries[date]=[]; user().e
 function delEntry(id){user().entries[date]=dayEntries().filter(e=>e.id!==id);save("jbf_db",db);render();}
 function profilesCard(){
  const entries=Object.entries(db.users||{});
+ const multi=entries.length>1;
  const list=entries.map(([k,u])=>{
    const nm=u.profile?.name||u.name||k, ini=(nm[0]||"?").toUpperCase();
-   return `<button class="item" onclick="switchProfile('${k.replaceAll("'","\\'")}')"><div class="ico">${ini}</div><div class="item-main" style="text-align:left"><div class="item-title">${nm}</div><div class="item-sub">${u.profile?.weight||"–"} kg</div></div><div style="font-size:18px;color:${k===db.active?'var(--green)':'var(--muted)'}">${k===db.active?"●":"›"}</div></button>`;
+   const del=multi?`<button class="del" onclick="event.stopPropagation();deleteProfile('${k.replaceAll("'","\\'")}')" title="Profil löschen">🗑️</button>`:"";
+   return `<div class="item" style="cursor:pointer" onclick="switchProfile('${k.replaceAll("'","\\'")}')"><div class="ico">${ini}</div><div class="item-main" style="text-align:left"><div class="item-title">${nm}</div><div class="item-sub">${u.profile?.weight||"–"} kg</div></div><div style="font-size:18px;color:${k===db.active?'var(--green)':'var(--muted)'}">${k===db.active?"●":"›"}</div>${del}</div>`;
  }).join("");
- return `<div class="card"><div class="label">Profile in diesem Konto</div><p class="note" style="margin:8px 0 12px">Aktives Profil ist grün markiert. Du kannst mehrere Personen in einem Konto führen.</p>
+ return `<div class="card"><div class="label">Profile in diesem Konto</div><p class="note" style="margin:8px 0 12px">Aktives Profil ist grün markiert. Mehrere Personen pro Konto möglich. ${multi?"Mit 🗑️ löschst du ein Profil (mit Sicherheitsabfrage).":""}</p>
    <div class="list">${list}</div><div style="height:10px"></div>
    <div class="row"><input id="npname2" placeholder="Name neues Profil"><button class="secondary" onclick="addProfileInApp()">+ Profil</button></div></div>`;
+}
+function deleteProfile(k){
+ const keys=Object.keys(db.users||{});
+ if(keys.length<=1){ alert("Das einzige Profil kann nicht gelöscht werden."); return; }
+ const u=db.users[k]; if(!u) return;
+ const nm=u.profile?.name||u.name||k;
+ const cnt=Object.values(u.entries||{}).reduce((s,a)=>s+a.length,0);
+ if(!confirm("Profil „"+nm+"“ wirklich löschen?\nAlle Daten dieses Profils ("+cnt+" Einträge, Gewichte, Favoriten) werden endgültig entfernt. Das kann nicht rückgängig gemacht werden.")) return;
+ delete db.users[k];
+ if(db.active===k){ db.active=Object.keys(db.users)[0]; date=today(); page="settings"; }
+ save("jbf_db",db); render();
 }
 function switchProfile(k){ if(db.users[k]){ db.active=k; date=today(); page="home"; save("jbf_db",db); render(); } }
 function addProfileInApp(){
@@ -1057,7 +1130,7 @@ function ensureAccountProfile(u){
  db.users[key]={email:key,pass:"",name,profile:{name,sex:"m",age:35,height:173,weight:74,goalWeight:70,bodyfat:"",activity:1.45,deficit:500,proteinFactor:2.0,manualCalories:"",manualProtein:""},entries:{},weights:{[today()]:74},custom:[]};
  db.active=key;
 }
-function render(){ $("root").innerHTML=!isLoggedIn()?loginScreen():(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():settings());}
+function render(){ $("root").innerHTML=!isLoggedIn()?(cloudConfigured()&&authView==="register"?registerScreen():loginScreen()):(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():settings());}
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("service-worker.js").catch(()=>{}); }); }
 initCloud();
 render();
