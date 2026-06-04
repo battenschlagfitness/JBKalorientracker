@@ -65,8 +65,11 @@ select option{background:#111;color:white}
 .addtop{width:46px;height:46px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--green),var(--blue));color:#04100a;font-size:28px;font-weight:900;line-height:1;box-shadow:0 8px 22px rgba(48,209,88,.35);display:grid;place-items:center}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-end;z-index:100}
 .overlay.open{display:flex}
-.sheet{width:100%;max-width:520px;margin:0 auto;background:#10131a;border:1px solid var(--line);border-radius:28px 28px 0 0;padding:18px 16px calc(26px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
-.grip{width:42px;height:5px;background:rgba(255,255,255,.22);border-radius:99px;margin:0 auto 18px}
+.sheet{width:100%;max-width:520px;margin:0 auto;background:#10131a;border:1px solid var(--line);border-radius:28px 28px 0 0;padding:12px 16px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow:auto}
+.grip{width:42px;height:5px;background:rgba(255,255,255,.22);border-radius:99px;margin:0 auto 6px}
+.sheet-head{position:sticky;top:0;background:#10131a;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0 10px;margin-bottom:4px;z-index:3}
+.sheet-head h2{margin:0;font-size:19px}
+.sheet-x{flex:0 0 auto;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:24px;line-height:1;display:grid;place-items:center}
 .quick{display:flex;gap:8px;overflow:auto;padding-bottom:4px}
 .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:13px}
 .chip.active{background:var(--green);color:#04100a;border-color:transparent;font-weight:800}
@@ -927,13 +930,13 @@ function logout(){ if(cloudConfigured()){ cloudLogout(); } else { db.active=null
 function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="jbfitness-backup.json";a.click();}
 function importData(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save("jbf_db",db);render()}catch{alert("Backup konnte nicht gelesen werden.")}};r.readAsText(f);}
 function foodSheet(){
- return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div><h2 id="foodTitle">Eintrag hinzufügen</h2>
- <div style="height:12px"></div>
+ return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div>
+ <div class="sheet-head"><h2 id="foodTitle">Eintrag hinzufügen</h2><button class="sheet-x" onclick="closeFood()" title="Schließen">×</button></div>
  <div class="row"><button class="secondary" style="flex:1" onclick="startScan()">📷 Barcode scannen</button><label class="secondary" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer">📸 Foto<input type="file" accept="image/*" capture="environment" onchange="scanPhoto(event)" style="display:none"></label></div>
  <div id="scanArea" style="display:none;margin:10px 0;border-radius:14px;overflow:hidden"></div>
  <button id="scanStop" class="secondary danger" style="display:none;width:100%;margin-bottom:10px" onclick="stopScan()">Scan abbrechen</button>
- <div style="height:6px"></div>
- <input id="foodSearch" placeholder="Lebensmittel suchen" oninput="renderFoodList()"><div id="foodList" class="list" style="margin:12px 0"></div>
+ <div style="height:8px"></div>
+ <input id="foodSearch" placeholder="Lebensmittel suchen" oninput="renderFoodList()"><div id="foodList" class="list" style="margin:10px 0;max-height:32vh;overflow:auto"></div>
  <div class="grid2"><input id="mname" placeholder="Name"><input id="mamount" type="number" inputmode="decimal" placeholder="Gramm" value="100" oninput="updateMCalc()"></div><div style="height:10px"></div>
  <div class="grid2"><input id="mkcal" type="number" inputmode="decimal" placeholder="kcal / 100g" oninput="updateMCalc()"><input id="mprot" type="number" inputmode="decimal" placeholder="Protein / 100g" oninput="updateMCalc()"></div>
  <div id="mcalc" class="card sm" style="text-align:center;margin:10px 0;display:none"></div>
