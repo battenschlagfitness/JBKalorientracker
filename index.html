@@ -84,6 +84,7 @@ canvas{width:100%;height:160px;background:rgba(255,255,255,.025);border-radius:1
 </style>
 <!-- Supabase (optional Cloud-Sync). Lädt nur online; App funktioniert auch ohne. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -545,21 +546,24 @@ function initCloud(){
     sb.auth.onAuthStateChange((_event, session)=>{ cloud.user = session ? session.user : null; if(cloud.user) cloudPull(true); render(); });
   }catch(e){ cloud.on=false; }
 }
+function rememberLogin(email,password){ if($("cremember")&&$("cremember").checked){ save("jbf_login",{email,password}); } else { try{localStorage.removeItem("jbf_login")}catch(e){} } }
 function cloudRegister(){
   if(!cloudConfigured()){ alert("Cloud ist noch nicht konfiguriert."); return; }
   const email=($("cemail").value||"").trim(), password=$("cpass").value||"";
+  rememberLogin(email,password);
   sb.auth.signUp({email,password}).then(({data,error})=>{
     if(error){ alert(error.message); return; }
-    if(data.session){ cloud.user=data.session.user; cloudPush(); render(); }
+    if(data.session){ cloud.user=data.session.user; cloudPull(true); }
     else { toast("✉️ Bestätige deine E-Mail"); }
   });
 }
 function cloudSignIn(){
   if(!cloudConfigured()){ alert("Cloud ist noch nicht konfiguriert."); return; }
   const email=($("cemail").value||"").trim(), password=$("cpass").value||"";
+  rememberLogin(email,password);
   sb.auth.signInWithPassword({email,password}).then(({data,error})=>{
     if(error){ alert(error.message); return; }
-    cloud.user=data.user; cloudPull(true); render();
+    cloud.user=data.user; cloudPull(true);
   });
 }
 function cloudLogout(){ if(cloudConfigured()&&sb) sb.auth.signOut().then(()=>{ cloud.user=null; render(); }); }
@@ -571,17 +575,14 @@ function cloudPush(silent){
 function cloudPull(silent){
   if(!cloudReady()) return;
   sb.from("backups").select("data").eq("user_id", cloud.user.id).maybeSingle().then(({data,error})=>{
-    if(error){ if(!silent) alert(error.message); return; }
-    if(data && data.data){
-      db = mergeDB(db, data.data);            // lokale + Cloud-Daten vereinen
-      localStorage.setItem("jbf_db", JSON.stringify(db));
-      render();
-      cloudPush(true);                          // vereinte Daten zurück in die Cloud
-      if(!silent) toast("☁️ Zusammengeführt");
-    } else {
-      cloudPush(true);                          // noch kein Backup -> lokale Daten hochladen
-      if(!silent) toast("☁️ Hochgeladen");
-    }
+    if(error){ if(!silent) alert(error.message); ensureAccountProfile(cloud.user); render(); return; }
+    const had = data && data.data;
+    if(had){ db = mergeDB(db, data.data); }     // lokale + Cloud-Daten vereinen
+    ensureAccountProfile(cloud.user);            // nach Login immer ein aktives Profil
+    localStorage.setItem("jbf_db", JSON.stringify(db));
+    render();
+    cloudPush(true);                              // vereinte/lokale Daten in die Cloud
+    if(!silent) toast(had ? "☁️ Zusammengeführt" : "☁️ Hochgeladen");
   });
 }
 function scheduleCloudPush(){ if(!cloudReady()) return; clearTimeout(cloudTimer); cloudTimer=setTimeout(()=>cloudPush(true),1500); }
@@ -687,6 +688,23 @@ function appShell(content){
 }
 let pendingKey=null;
 function loginScreen(){
+ // Wenn Cloud eingerichtet: zuerst Anmeldung mit E-Mail/Passwort – KEINE Profile sichtbar.
+ if(cloudConfigured()){
+  const sv=load("jbf_login",null)||{};
+  return `<div class="login"><div class="loginbox">
+   <div class="logo-big"><img src="icon-192.png" alt="JB"></div>
+   <h1 style="text-align:center;font-size:34px;margin-bottom:6px">JB Fitness</h1>
+   <p class="muted" style="text-align:center;margin-bottom:22px">Bitte anmelden, um fortzufahren</p>
+   <div class="card">
+     <div class="label">Anmelden</div><div style="height:10px"></div>
+     <input id="cemail" type="email" autocomplete="email" placeholder="E-Mail" value="${escA(sv.email||"")}"><div style="height:10px"></div>
+     <input id="cpass" type="password" autocomplete="current-password" placeholder="Passwort" value="${escA(sv.password||"")}"><div style="height:12px"></div>
+     <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><input type="checkbox" id="cremember" ${sv.email?"checked":""} style="width:20px;height:20px"> E-Mail & Passwort auf diesem Gerät merken</label>
+     <div class="row"><button class="secondary" style="flex:1" onclick="cloudSignIn()">Anmelden</button><button class="primary" style="flex:1" onclick="cloudRegister()">Registrieren</button></div>
+     <p class="note" style="margin-top:12px">Du bleibst nach dem Anmelden automatisch eingeloggt. „Merken" füllt die Felder beim nächsten Mal vor – nutze es nur auf deinem eigenen Gerät.</p>
+   </div></div></div>`;
+ }
+ // Fallback ohne Cloud (z.B. offline / nicht konfiguriert): lokale Profilauswahl
  const profs=Object.entries(db.users);
  const list = profs.length ? `<div class="label" style="margin-bottom:10px">Profil wählen</div><div class="list" style="margin-bottom:14px">`+profs.map(([k,u])=>{
    const nm=u.profile?.name||u.name||k, ini=(nm[0]||"?").toUpperCase();
@@ -709,7 +727,6 @@ function loginScreen(){
      <input id="nppin" type="password" inputmode="numeric" placeholder="PIN (optional)"><div style="height:12px"></div>
      <button class="primary" onclick="createProfile()">Profil erstellen</button>
    </div>
-   <p class="note" style="margin-top:12px">Profile werden lokal auf diesem Gerät gespeichert. Für Cloud-Login über mehrere Geräte kann später Firebase ergänzt werden.</p>
  </div></div></div>`;
 }
 function pickProfile(key){
@@ -820,21 +837,89 @@ function settings(){
  ${favEditorCard()}
  ${cloudCard()}
  <div class="card"><div class="label">Datensicherung</div><div style="height:12px"></div><button class="secondary" onclick="exportData()">Backup exportieren</button><div style="height:10px"></div><input type="file" id="importFile" accept=".json" onchange="importData(event)"></div>
- <div class="card"><button class="secondary danger" onclick="logout()">Profil wechseln / Ausloggen</button></div>`);
+ ${profilesCard()}
+ <div class="card"><button class="secondary danger" onclick="logout()">Abmelden</button></div>`);
 }
 function savePin(){ user().pass=($("ppin").value||"").trim(); save("jbf_db",db); alert(user().pass?"PIN gesetzt.":"PIN entfernt."); }
 function saveProfile(){const p=user().profile;p.name=$("pname").value;p.age=+$("pagev").value;p.height=+$("pheight").value;p.weight=+$("pweight").value;p.goalWeight=+$("pgoal").value;p.bodyfat=$("pbf").value;p.sex=$("psex").value;p.activity=+$("pact").value;p.manualCalories=$("pcal").value;p.manualProtein=$("ppro").value;save("jbf_db",db);render();}
-function logout(){db.active=null;save("jbf_db",db);render()}
+function logout(){ if(cloudConfigured()){ cloudLogout(); } else { db.active=null; save("jbf_db",db); render(); } }
 function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="jbfitness-backup.json";a.click();}
 function importData(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save("jbf_db",db);render()}catch{alert("Backup konnte nicht gelesen werden.")}};r.readAsText(f);}
 function foodSheet(){
- return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div><h2>Eintrag hinzufügen</h2><div style="height:12px"></div><input id="foodSearch" placeholder="Lebensmittel suchen" oninput="renderFoodList()"><div id="foodList" class="list" style="margin:12px 0"></div><div class="grid2"><input id="mname" placeholder="Name"><input id="mamount" type="number" placeholder="Gramm" value="100"></div><div style="height:10px"></div><div class="grid2"><input id="mkcal" type="number" placeholder="kcal / 100g"><input id="mprot" type="number" placeholder="Protein / 100g"></div><div style="height:12px"></div><button class="primary" onclick="addManual()">Hinzufügen</button></div></div>`;
+ return `<div class="overlay" id="foodOverlay" onclick="if(event.target.id==='foodOverlay')closeFood()"><div class="sheet"><div class="grip"></div><h2>Eintrag hinzufügen</h2>
+ <div style="height:12px"></div>
+ <div class="row"><button class="secondary" style="flex:1" onclick="startScan()">📷 Barcode scannen</button><label class="secondary" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer">📸 Foto<input type="file" accept="image/*" capture="environment" onchange="scanPhoto(event)" style="display:none"></label></div>
+ <div id="scanArea" style="display:none;margin:10px 0;border-radius:14px;overflow:hidden"></div>
+ <button id="scanStop" class="secondary danger" style="display:none;width:100%;margin-bottom:10px" onclick="stopScan()">Scan abbrechen</button>
+ <div style="height:6px"></div>
+ <input id="foodSearch" placeholder="Lebensmittel suchen" oninput="renderFoodList()"><div id="foodList" class="list" style="margin:12px 0"></div>
+ <div class="grid2"><input id="mname" placeholder="Name"><input id="mamount" type="number" placeholder="Gramm" value="100"></div><div style="height:10px"></div>
+ <div class="grid2"><input id="mkcal" type="number" placeholder="kcal / 100g"><input id="mprot" type="number" placeholder="Protein / 100g"></div><div style="height:10px"></div>
+ <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><input type="checkbox" id="msave" style="width:20px;height:20px"> 📌 Als Artikel dauerhaft in meine Datenbank speichern</label>
+ <button class="primary" onclick="addManual()">Hinzufügen</button></div></div>`;
 }
 function openFood(){ $("foodOverlay").classList.add("open"); renderFoodList();}
-function closeFood(){ $("foodOverlay").classList.remove("open");}
-function renderFoodList(){ const q=($("foodSearch")?.value||"").toLowerCase(); const list=FOODS.filter(f=>f[0].toLowerCase().includes(q)).slice(0,10); $("foodList").innerHTML=list.map(f=>`<button class="item" onclick="selectFood('${f[0].replaceAll("'","\\'")}')"><div class="ico">${f[3]}</div><div class="item-main" style="text-align:left"><div class="item-title">${f[0]}</div><div class="item-sub">${f[1]} kcal · ${f[2]}g Protein / 100g</div></div></button>`).join("");}
-function selectFood(n){ const f=FOODS.find(x=>x[0]===n); $("mname").value=f[0]; $("mkcal").value=f[1]; $("mprot").value=f[2];}
-function addManual(){const name=$("mname").value||"Eintrag",amount=+$("mamount").value||100,k=+$("mkcal").value||0,p=+$("mprot").value||0;addEntry({id:uid(),name,amount,kcal:Math.round(k*amount/100),protein:Math.round(p*amount/100),icon:"🍽️"});closeFood();}
+function closeFood(){ stopScan(); $("foodOverlay").classList.remove("open");}
+function allFoods(){ return FOODS.concat(Array.isArray(user().custom)?user().custom:[]); }
+function renderFoodList(){ const q=($("foodSearch")?.value||"").toLowerCase(); const list=allFoods().filter(f=>f[0].toLowerCase().includes(q)).slice(0,12); $("foodList").innerHTML=list.map(f=>`<button class="item" onclick="selectFood('${f[0].replaceAll("'","\\'")}')"><div class="ico">${f[3]||"🍽️"}</div><div class="item-main" style="text-align:left"><div class="item-title">${f[0]}</div><div class="item-sub">${f[1]} kcal · ${f[2]}g Protein / 100g</div></div></button>`).join("");}
+function selectFood(n){ const f=allFoods().find(x=>x[0]===n); if(f){ $("mname").value=f[0]; $("mkcal").value=f[1]; $("mprot").value=f[2]; }}
+function addManual(){
+ const name=$("mname").value||"Eintrag",amount=+$("mamount").value||100,k=+$("mkcal").value||0,p=+$("mprot").value||0;
+ if($("msave")&&$("msave").checked){
+   if(!Array.isArray(user().custom)) user().custom=[];
+   if(!allFoods().some(f=>f[0].toLowerCase()===name.toLowerCase())){ user().custom.push([name,k,p,"🍽️"]); }
+ }
+ addEntry({id:uid(),name,amount,kcal:Math.round(k*amount/100),protein:Math.round(p*amount/100),icon:"🍽️"});
+ closeFood();
+}
+
+// ===== Barcode-Scanner (Live + Foto-Fallback) + Open Food Facts =====
+let scanner=null;
+function scanFormats(){ return [Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.CODE_128]; }
+function startScan(){
+ if(typeof Html5Qrcode==="undefined"){ alert("Scanner konnte nicht geladen werden. Bist du online?"); return; }
+ const area=$("scanArea"); area.style.display="block"; area.innerHTML="";
+ $("scanStop").style.display="block";
+ scanner=new Html5Qrcode("scanArea");
+ scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:260,height:160},formatsToSupport:scanFormats()},
+   (txt)=>{ stopScan(); lookupBarcode(txt); },
+   ()=>{}
+ ).catch(e=>{ alert("Kamera nicht verfügbar: "+e+" — nutze stattdessen die Foto-Option."); area.style.display="none"; $("scanStop").style.display="none"; });
+}
+function stopScan(){
+ const area=$("scanArea"), b=$("scanStop");
+ if(scanner){ try{ scanner.stop().then(()=>{try{scanner.clear()}catch(e){}}).catch(()=>{}); }catch(e){} scanner=null; }
+ if(area){ area.style.display="none"; }
+ if(b){ b.style.display="none"; }
+}
+function scanPhoto(ev){
+ const file=ev.target.files[0]; ev.target.value=""; if(!file)return;
+ if(typeof Html5Qrcode==="undefined"){ alert("Scanner konnte nicht geladen werden. Bist du online?"); return; }
+ const area=$("scanArea"); area.style.display="block"; area.innerHTML="";
+ const tmp=new Html5Qrcode("scanArea");
+ tmp.scanFile(file,true).then(txt=>{ try{tmp.clear()}catch(e){} area.style.display="none"; lookupBarcode(txt); })
+   .catch(()=>{ try{tmp.clear()}catch(e){} area.style.display="none"; alert("Kein Barcode im Foto erkannt – bitte näher/schärfer fotografieren."); });
+}
+function lookupBarcode(code){
+ toast("🔎 Suche "+code+" …");
+ fetch("https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+".json?fields=product_name,brands,nutriments")
+  .then(r=>r.json()).then(d=>{
+    if(d.status===1 && d.product){
+      const p=d.product, n=p.nutriments||{};
+      const brand=p.brands?(" ("+p.brands.split(",")[0].trim()+")"):"";
+      const name=((p.product_name||"").trim()+brand)||("Artikel "+code);
+      $("mname").value=name;
+      const kcal=n["energy-kcal_100g"], prot=n["proteins_100g"];
+      if(kcal!=null)$("mkcal").value=Math.round(kcal);
+      if(prot!=null)$("mprot").value=Math.round(prot*10)/10;
+      if($("msave"))$("msave").checked=true;
+      toast("✅ "+name);
+    } else {
+      $("mname").value="Artikel "+code; if($("msave"))$("msave").checked=true;
+      toast("⚠️ Nicht gefunden – Werte bitte selbst eintragen");
+    }
+  }).catch(()=>{ alert("Produktabruf fehlgeschlagen. Bist du online?"); });
+}
 function quickFood(n,amount){const f=FOODS.find(x=>x[0]===n); if(f)addEntry({id:uid(),name:f[0],amount,kcal:Math.round(f[1]*amount/100),protein:Math.round(f[2]*amount/100),icon:f[3]});}
 
 // ===== Eigene Favoriten / Schnellauswahl =====
@@ -892,7 +977,36 @@ function favEditorCard(){
 }
 function addEntry(e){ if(!user().entries[date])user().entries[date]=[]; user().entries[date].push(e); save("jbf_db",db); render();}
 function delEntry(id){user().entries[date]=dayEntries().filter(e=>e.id!==id);save("jbf_db",db);render();}
-function render(){ $("root").innerHTML=!db.active?loginScreen():(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():settings());}
+function profilesCard(){
+ const entries=Object.entries(db.users||{});
+ const list=entries.map(([k,u])=>{
+   const nm=u.profile?.name||u.name||k, ini=(nm[0]||"?").toUpperCase();
+   return `<button class="item" onclick="switchProfile('${k.replaceAll("'","\\'")}')"><div class="ico">${ini}</div><div class="item-main" style="text-align:left"><div class="item-title">${nm}</div><div class="item-sub">${u.profile?.weight||"–"} kg</div></div><div style="font-size:18px;color:${k===db.active?'var(--green)':'var(--muted)'}">${k===db.active?"●":"›"}</div></button>`;
+ }).join("");
+ return `<div class="card"><div class="label">Profile in diesem Konto</div><p class="note" style="margin:8px 0 12px">Aktives Profil ist grün markiert. Du kannst mehrere Personen in einem Konto führen.</p>
+   <div class="list">${list}</div><div style="height:10px"></div>
+   <div class="row"><input id="npname2" placeholder="Name neues Profil"><button class="secondary" onclick="addProfileInApp()">+ Profil</button></div></div>`;
+}
+function switchProfile(k){ if(db.users[k]){ db.active=k; date=today(); page="home"; save("jbf_db",db); render(); } }
+function addProfileInApp(){
+ const name=($("npname2").value||"").trim(); if(!name){ $("npname2").focus(); return; }
+ const key=name.toLowerCase();
+ if(db.users[key]){ alert("Ein Profil mit diesem Namen existiert bereits."); return; }
+ db.users[key]={email:key,pass:"",name,profile:{name,sex:"m",age:35,height:173,weight:74,goalWeight:70,bodyfat:"",activity:1.45,deficit:500,proteinFactor:2.0,manualCalories:"",manualProtein:""},entries:{},weights:{[today()]:74},custom:[]};
+ db.active=key; date=today(); page="home"; save("jbf_db",db); render();
+}
+function isLoggedIn(){ return cloudConfigured() ? !!cloud.user : !!db.active; }
+function ensureAccountProfile(u){
+ if(!db.users) db.users={};
+ if(db.active && db.users[db.active]) return;
+ const keys=Object.keys(db.users);
+ if(keys.length){ db.active=keys[0]; return; }
+ const key=((u&&u.email)||"profil").toLowerCase();
+ const name=((u&&u.email)||"Profil").split("@")[0];
+ db.users[key]={email:key,pass:"",name,profile:{name,sex:"m",age:35,height:173,weight:74,goalWeight:70,bodyfat:"",activity:1.45,deficit:500,proteinFactor:2.0,manualCalories:"",manualProtein:""},entries:{},weights:{[today()]:74},custom:[]};
+ db.active=key;
+}
+function render(){ $("root").innerHTML=!isLoggedIn()?loginScreen():(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():settings());}
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("service-worker.js").catch(()=>{}); }); }
 initCloud();
 render();
