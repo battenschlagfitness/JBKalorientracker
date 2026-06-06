@@ -1327,15 +1327,21 @@ function swapsFor(name){ const n=String(name||"").toLowerCase();
  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
  const hit=(key)=> key.length<=4 ? new RegExp("(^|[^a-zäöüß])"+esc(key)+"([^a-zäöüß]|$)").test(n) : n.includes(key);
  for(const [keys,alts] of SWAPS){ if(keys.some(hit)) return alts; } return null; }
+let curSwaps=null;
 function renderSwaps(name){
  const box=$("swapBox"); if(!box) return;
- const cur=+($("mkcal")?.value||0);
  const alts=swapsFor(name);
- if(!alts){ box.style.display="none"; box.innerHTML=""; return; }
- const chips=alts.map(a=>{ const save=(cur&&a.k<cur-3)?` · <span style="color:var(--green)">−${cur-a.k} kcal/100g</span>`:""; const nm=String(a.n).replaceAll("'","\\'"); return `<button class="item" onclick="pickVals('${nm}',${a.k},${a.p})"><div class="ico">✨</div><div class="item-main" style="text-align:left"><div class="item-title">${a.n}</div><div class="item-sub">${a.k} kcal · ${a.p}g Protein / 100g${a.note?' · '+a.note:''}${save}</div></div></button>`; }).join("");
+ if(!alts){ box.style.display="none"; box.innerHTML=""; curSwaps=null; return; }
+ curSwaps={alts,cur:+($("mkcal")?.value||0)};
  box.style.display="block";
- box.innerHTML=`<div class="card sm" style="border-color:rgba(48,209,88,.35)"><div class="label" style="color:var(--green);margin-bottom:8px">💡 Vielleicht eine Alternative?</div><div class="list">${chips}</div></div>`;
+ box.innerHTML=`<button onclick="expandSwaps()" style="width:100%;text-align:left;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.3);color:var(--green);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600">💡 Gesündere Alternative? <span style="color:var(--muted);font-weight:400">– tippen</span></button>`;
 }
+function expandSwaps(){
+ const box=$("swapBox"); if(!box||!curSwaps) return; const cur=curSwaps.cur;
+ const chips=curSwaps.alts.map(a=>{ const save=(cur&&a.k<cur-3)?` · <span style="color:var(--green)">−${cur-a.k} kcal/100g</span>`:""; const nm=String(a.n).replaceAll("'","\\'"); return `<button class="item" onclick="pickVals('${nm}',${a.k},${a.p})"><div class="ico">✨</div><div class="item-main" style="text-align:left"><div class="item-title">${a.n}</div><div class="item-sub">${a.k} kcal · ${a.p}g Protein / 100g${a.note?' · '+a.note:''}${save}</div></div></button>`; }).join("");
+ box.innerHTML=`<div class="card sm" style="border-color:rgba(48,209,88,.35)"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><div class="label" style="color:var(--green)">💡 Vielleicht eine Alternative?</div><button onclick="collapseSwaps()" style="background:none;border:0;color:var(--muted);font-size:18px;line-height:1">×</button></div><div class="list">${chips}</div></div>`;
+}
+function collapseSwaps(){ renderSwaps($("mname")?.value||""); }
 function pickVals(n,k,p){ $("mname").value=n; $("mkcal").value=k; $("mprot").value=p; curUnit=portionFor(n); if(curUnit){ unitMode="piece"; $("mamount").value=1; } else { unitMode="gram"; $("mamount").value=100; } refreshUnitUI(); updateMCalc(); renderSwaps(n); }
 function selectFood(n){ const f=allFoods().find(x=>x[0]===n); if(f) pickVals(f[0],f[1],f[2]); }
 function addManual(){
