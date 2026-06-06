@@ -745,6 +745,7 @@ function onboardOverlay(){
    </div></div>`;
 }
 let pendingKey=null, pendingProfile=null;
+const OAUTH_ENABLED=false; // auf true setzen, sobald Google/Apple in Supabase eingerichtet sind
 function loginScreen(){
  // Wenn Cloud eingerichtet: zuerst Anmeldung mit E-Mail/Passwort – KEINE Profile sichtbar.
  if(cloudConfigured()){
@@ -759,11 +760,11 @@ function loginScreen(){
      <input id="cpass" type="password" autocomplete="current-password" placeholder="Passwort" value="${escA(sv.password||"")}"><div style="height:12px"></div>
      <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><input type="checkbox" id="cremember" ${sv.email?"checked":""} style="width:20px;height:20px"> E-Mail & Passwort auf diesem Gerät merken</label>
      <div class="row"><button class="secondary" style="flex:1" onclick="cloudSignIn()">Anmelden</button><button class="primary" style="flex:1" onclick="authView='register';render()">Registrieren</button></div>
-     <div class="orline"><span>oder</span></div>
+     ${OAUTH_ENABLED?`<div class="orline"><span>oder</span></div>
      <button class="oauth google" onclick="cloudOAuth('google')"><span>G</span> Mit Google anmelden</button>
      <div style="height:8px"></div>
-     <button class="oauth apple" onclick="cloudOAuth('apple')"><span></span> Mit Apple anmelden</button>
-     <p class="note" style="margin-top:12px">Noch kein Konto? Tippe auf „Registrieren" oder melde dich direkt mit Google/Apple an. Du bleibst dann automatisch eingeloggt.</p>
+     <button class="oauth apple" onclick="cloudOAuth('apple')"><span></span> Mit Apple anmelden</button>`:""}
+     <p class="note" style="margin-top:12px">Noch kein Konto? Tippe auf „Registrieren". Du bleibst dann automatisch eingeloggt.</p>
    </div></div></div>`;
  }
  // Fallback ohne Cloud (z.B. offline / nicht konfiguriert): lokale Profilauswahl
@@ -1229,10 +1230,13 @@ let offResults=[], offTimer=null;
 function foodRow(icon,name,k,p){ const safe=String(name).replaceAll("\\","").replaceAll("'","\\'"); return `<button class="item" onclick="pickVals('${safe}',${(+k)||0},${(+p)||0})"><div class="ico">${icon}</div><div class="item-main" style="text-align:left"><div class="item-title">${name}</div><div class="item-sub">${(+k)||0} kcal · ${(+p)||0}g Protein / 100g</div></div></button>`; }
 function paintFoodList(){
  const q=($("foodSearch")?.value||"").toLowerCase().trim();
- const local=allFoods().filter(f=>f[0].toLowerCase().includes(q)).slice(0,12);
+ const el=$("foodList"); if(!el) return;
+ if(!q && !offResults.length){ el.innerHTML=""; el.style.display="none"; return; }
+ el.style.display="block";
+ const local=q?allFoods().filter(f=>f[0].toLowerCase().includes(q)).slice(0,12):[];
  let html=local.map(f=>foodRow(f[3]||"🍽️",f[0],f[1],f[2])).join("");
  if(offResults.length){ html+=`<div class="muted" style="font-size:11px;margin:10px 4px 4px">🌐 Aus Online-Datenbank (Open Food Facts)</div>`+offResults.map(f=>foodRow("🌐",f[0],f[1],f[2])).join(""); }
- const el=$("foodList"); if(el) el.innerHTML=html||`<div class="muted" style="text-align:center;padding:10px">Keine Treffer – tippe weiter oder gib die Werte unten manuell ein.</div>`;
+ el.innerHTML=html||`<div class="muted" style="text-align:center;padding:10px">Keine Treffer – tippe weiter oder gib die Werte unten manuell ein.</div>`;
 }
 function renderFoodList(){ offResults=[]; paintFoodList(); const q=($("foodSearch")?.value||"").trim(); if(q.length>=3){ clearTimeout(offTimer); offTimer=setTimeout(()=>offSearch(q),450); } }
 function offSearch(q){
@@ -1547,6 +1551,9 @@ function render(){ $("root").innerHTML=!isLoggedIn()?(cloudConfigured()&&authVie
 function showIntro(){
  try{
    if(window.__introShown) return; window.__introShown=true;
+   let opens=(parseInt(localStorage.getItem("jbf_opens")||"0",10)||0)+1;
+   localStorage.setItem("jbf_opens",String(opens));
+   if(opens%5!==1) return;   // nur jedes 5. Öffnen (1., 6., 11., …)
    const ov=document.createElement("div"); ov.id="introOverlay";
    ov.innerHTML=`<video id="introVid" src="jbfitness-intro.mp4" autoplay muted playsinline webkit-playsinline></video>
      <button id="introSound" title="Ton">🔇</button>
@@ -1562,6 +1569,7 @@ function showIntro(){
  }catch(e){}
 }
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("service-worker.js").catch(()=>{}); }); }
+document.addEventListener("click",function(e){ if(!("vibrate" in navigator)) return; const t=e.target.closest("button,[onclick],.item,.chip,.tab"); if(t){ try{ navigator.vibrate(10); }catch(_){} } },true);
 initCloud();
 render();
 showIntro();
