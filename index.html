@@ -24,7 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
  linear-gradient(180deg,#050507,#0b1020 55%,#050507);color:var(--text);min-height:100vh;padding-bottom:92px}
 button,input,select{font-family:inherit}
 button{cursor:pointer}
-.wrap{max-width:520px;margin:0 auto;padding:0 16px}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;z-index:20;padding:calc(18px + env(safe-area-inset-top)) 16px 12px;background:rgba(5,5,7,.72);backdrop-filter:blur(22px);border-bottom:1px solid var(--line)}
 .head{max-width:520px;margin:0 auto;display:flex;align-items:center;gap:12px}
 .logo{width:46px;height:46px;border-radius:15px;overflow:hidden;display:grid;place-items:center;box-shadow:0 10px 30px rgba(48,209,88,.25)}
@@ -32,11 +32,11 @@ header{position:sticky;top:0;z-index:20;padding:calc(18px + env(safe-area-inset-
 .h-title{font-size:22px;font-weight:800;letter-spacing:-.5px}
 .h-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .ghost{margin-left:auto;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:9px 11px}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(5,5,7,.78);backdrop-filter:blur(22px);border-top:1px solid var(--line)}
-.tabbar{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.tab{border:0;background:transparent;color:var(--muted);border-radius:14px;padding:8px 4px;font-size:11px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:rgba(5,5,7,.78);backdrop-filter:blur(22px);border-top:1px solid var(--line)}
+.tabbar{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.tab{border:0;background:transparent;color:var(--muted);border-radius:14px;padding:8px 2px;font-size:10px}
 .tab.active{background:var(--card);color:var(--text)}
-.tab b{display:block;font-size:20px;margin-bottom:2px}
+.tab b{display:block;font-size:19px;margin-bottom:2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:18px;margin:14px 0;box-shadow:0 18px 50px rgba(0,0,0,.25)}
 .card.sm{border-radius:20px;padding:14px;background:var(--card2)}
 .row{display:flex;gap:10px}
@@ -637,6 +637,7 @@ function mergeUser(a,b){
   out.entries = mergeEntries(a.entries, b.entries);
   out.weights = Object.assign({}, b.weights||{}, a.weights||{}); // gleiches Datum: lokal gewinnt
   out.water   = Object.assign({}, b.water||{}, a.water||{});      // Wasser je Tag: lokal gewinnt
+  out.activity= Object.assign({}, b.activity||{}, a.activity||{});// Aktivkalorien je Tag
   out.custom  = mergeCustom(a.custom, b.custom);
   out.meals   = a.meals || b.meals;                              // gespeicherte Mahlzeiten
   out.favs    = a.favs  || b.favs;                               // Favoriten
@@ -714,7 +715,19 @@ function dayEntries(){return user().entries[date]||[]}
 function stats(){
  const e=dayEntries(), t=targets();
  const kcal=e.reduce((s,x)=>s+x.kcal,0), prot=e.reduce((s,x)=>s+x.protein,0);
- return {kcal,prot,rem:t.calories-kcal,prem:t.protein-prot,t};
+ const active=activeToday(), dyn=(user().profile.dynamicCals!==false);
+ const eff=t.calories+(dyn?active:0);
+ return {kcal,prot,active,dyn,effCalories:eff,rem:eff-kcal,prem:t.protein-prot,t};
+}
+function activeToday(){ const u=user(); if(!u.activity)u.activity={}; return +u.activity[date]||0; }
+function addActive(k){ const u=user(); if(!u.activity)u.activity={}; u.activity[date]=Math.max(0,(+u.activity[date]||0)+k); save("jbf_db",db); render(); }
+function resetActive(){ const u=user(); if(!u.activity)u.activity={}; u.activity[date]=0; save("jbf_db",db); render(); }
+function setActiveKcal(){ const cur=activeToday(); const v=prompt("Verbrannte Aktivkalorien heute (kcal):",cur); if(v===null)return; const n=parseInt(v,10); if(n>=0){ const u=user(); if(!u.activity)u.activity={}; u.activity[date]=n; save("jbf_db",db); render(); } }
+function activityCard(){
+ const a=activeToday(), dyn=(user().profile.dynamicCals!==false), s=stats();
+ return `<div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">🔥 Aktivität heute</div><button class="chip" style="padding:3px 9px" onclick="setActiveKcal()">${a} kcal</button></div>
+ <p class="muted" style="font-size:12px;margin:6px 0 8px">Verbrannte Aktivkalorien (Sport, Schritte …). ${dyn?`Werden zum Tagesziel addiert → Budget heute <b style="color:var(--green)">${s.effCalories} kcal</b>.`:`Werden aktuell <b>nicht</b> aufs Ziel addiert (in Profil änderbar).`}</p>
+ <div class="row" style="gap:8px;flex-wrap:wrap"><button class="secondary" style="flex:1" onclick="addActive(100)">+100</button><button class="secondary" style="flex:1" onclick="addActive(250)">+250</button><button class="secondary" style="flex:0 0 auto" onclick="addActive(-100)">−</button><button class="secondary" style="flex:0 0 auto" onclick="resetActive()" title="Zurücksetzen">↺</button></div></div>`;
 }
 function appShell(content){
  const u=user(), s=stats();
@@ -871,14 +884,16 @@ function createProfile(){
  db.active=key; page="home"; date=today(); save("jbf_db",db); render();
 }
 function home(){
- const u=user(), s=stats(), pct=Math.min(100,s.kcal/s.t.calories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
+ const u=user(), s=stats(), pct=Math.min(100,s.kcal/s.effCalories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
  const bmi=bmiVal(u.profile.weight,u.profile.height);
  const d=new Date(date+"T12:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit"});
  return appShell(`<div class="card"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><button class="chip" style="padding:5px 14px;font-size:18px" onclick="shiftDay(-1)">‹</button><div style="text-align:center"><div class="label" style="margin:0">${d}</div>${date!==today()?'<button class="chip" style="padding:2px 10px;margin-top:4px" onclick="goToday()">→ Heute</button>':'<div class="muted" style="font-size:11px">heute</div>'}</div><button class="chip" style="padding:5px 14px;font-size:18px;${date>=today()?'opacity:.3;pointer-events:none':''}" onclick="shiftDay(1)">›</button></div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))} <span style="font-size:18px;color:var(--muted);font-weight:600">kcal</span></div><div class="muted">${s.rem>=0?"verbleibend – bleib auf/unter dem Budget zum Abnehmen":"über dem Budget"}</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
  <div class="grid3" style="margin-top:14px"><div class="kpi"><div class="label">Gegessen</div><div class="mid">${s.kcal}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Ziel</div><div class="mid">${s.t.calories}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Verbrauch</div><div class="mid">${s.t.tdee}</div><div class="muted" style="font-size:11px">kcal (TDEE)</div></div></div></div>
- <div class="card sm"><div class="label">Protein</div><div class="row" style="align-items:end;justify-content:space-between"><div class="mid">${s.prot}g / ${s.t.protein}g</div><div class="muted">${Math.max(0,s.prem)}g offen</div></div><div class="progress"><div class="fill" style="width:${ppct}%;background:linear-gradient(90deg,var(--orange),var(--green))"></div></div></div>
- <div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div><div class="label">BMI</div><div class="mid">${bmi||"–"}</div></div><div style="text-align:right"><div style="color:${bmiColor(bmi)};font-weight:800">${bmiCat(bmi)}</div><div class="muted" style="font-size:11px">${u.profile.height||"–"} cm · ${u.profile.weight||"–"} kg</div></div></div></div>
- ${waterCard()}
+ <div class="grid2">
+   <div class="card sm" style="margin:0"><div class="label">Protein</div><div class="mid" style="margin:2px 0">${s.prot} / ${s.t.protein}g</div><div class="progress"><div class="fill" style="width:${ppct}%;background:linear-gradient(90deg,var(--orange),var(--green))"></div></div><div class="muted" style="font-size:11px;margin-top:4px">${Math.max(0,s.prem)}g offen</div></div>
+   <div class="card sm" style="margin:0"><div class="label">BMI</div><div class="mid" style="margin:2px 0">${bmi||"–"}</div><div style="color:${bmiColor(bmi)};font-weight:700;font-size:13px">${bmiCat(bmi)}</div><div class="muted" style="font-size:11px">${u.profile.weight||"–"} kg</div></div>
+ </div>
+ <div class="grid2">${waterCard()}${activityCard()}</div>
 
  <div class="quick">${ensureFavs().map((f,i)=>`<button class="chip" onclick="quickFav(${i})">${f.icon||"🍽️"} ${f.name}${f.amount?` ${f.amount}g`:""}</button>`).join("")||'<span class="muted" style="font-size:13px">Noch keine Favoriten</span>'}<button class="chip" style="border-style:dashed" onclick="page='settings';render();setTimeout(()=>{var el=document.getElementById('favEditor');if(el)el.scrollIntoView({behavior:'smooth'});},60)">✏️ Bearbeiten</button></div>
  <div class="label" style="margin:18px 0 10px">Heute gegessen <span class="muted" style="font-weight:400;font-size:12px">(antippen zum Bearbeiten)</span></div>${mealsHtml()}`);
@@ -893,7 +908,7 @@ function waterCard(){
  return `<div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">💧 Wasser</div><button class="chip" style="padding:3px 9px" onclick="setWaterGoal()">Ziel ${goal} ml</button></div>
  <div class="row" style="align-items:end;justify-content:space-between;margin:6px 0 2px"><div class="mid">${cur} <span style="font-size:13px;color:var(--muted)">/ ${goal} ml</span></div><div class="muted" style="font-size:12px">${glasses} Glas${glasses===1?"":"er"}</div></div>
  <div class="progress"><div class="fill" style="width:${pct}%;background:linear-gradient(90deg,#3a8dff,#60b3ff)"></div></div>
- <div class="row" style="gap:8px;margin-top:10px"><button class="secondary" style="flex:1" onclick="addWater(250)">+ 250 ml</button><button class="secondary" style="flex:1" onclick="addWater(500)">+ 500 ml</button><button class="secondary" style="flex:0 0 auto" onclick="addWater(-250)">−</button><button class="secondary" style="flex:0 0 auto" onclick="resetWater()" title="Zurücksetzen">↺</button></div></div>`;
+ <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="secondary" style="flex:1" onclick="addWater(250)">+ 250 ml</button><button class="secondary" style="flex:1" onclick="addWater(500)">+ 500 ml</button><button class="secondary" style="flex:0 0 auto" onclick="addWater(-250)">−</button><button class="secondary" style="flex:0 0 auto" onclick="resetWater()" title="Zurücksetzen">↺</button></div></div>`;
 }
 function goalsCard(){
  const wg=waterGoal(), fg=fastState().goalH;
@@ -901,9 +916,10 @@ function goalsCard(){
  return `<div class="card"><div class="label">Ziele & Extras</div><div style="height:12px"></div>
    <div class="label" style="margin-bottom:6px">💧 Wasser-Tagesziel (ml)</div><input id="swater" type="number" inputmode="numeric" value="${wg}"><div style="height:10px"></div>
    <div class="label" style="margin-bottom:6px">⏱️ Standard-Fastenfenster</div><select id="sfast">${fopt}</select><div style="height:14px"></div>
+   <label class="checkrow" style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><input type="checkbox" id="sdyn" ${user().profile.dynamicCals!==false?"checked":""} style="width:20px;height:20px"> Aktivkalorien zum Tagesziel addieren (dynamisches Budget)</label>
    <button class="secondary" onclick="saveGoalsExtras()">Speichern</button></div>`;
 }
-function saveGoalsExtras(){ const w=parseInt($("swater").value,10); if(w>0) user().profile.waterGoal=w; fastState().goalH=+$("sfast").value||16; save("jbf_db",db); render(); toast("Ziele gespeichert"); }
+function saveGoalsExtras(){ const w=parseInt($("swater").value,10); if(w>0) user().profile.waterGoal=w; fastState().goalH=+$("sfast").value||16; if($("sdyn")) user().profile.dynamicCals=$("sdyn").checked; save("jbf_db",db); render(); toast("Ziele gespeichert"); }
 function shiftDay(delta){ const d=new Date(date+"T12:00"); d.setDate(d.getDate()+delta); const k=d.toISOString().slice(0,10); if(k>today()) return; date=k; render(); }
 function goToday(){ date=today(); render(); }
 let fastTick=null;
@@ -913,8 +929,8 @@ function fmtDur(ms){ const s=Math.max(0,Math.floor(ms/1000)); const h=Math.floor
 function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function tsToHM(ts){ const d=new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function hmToTs(hm){ if(!hm) return Date.now(); const p=hm.split(":"); const d=new Date(); d.setHours(+p[0]||0,+p[1]||0,0,0); if(d.getTime()>Date.now()) d.setDate(d.getDate()-1); return d.getTime(); }
-function startFast(){ const f=fastState(); const inp=$("fastStartInput"); f.start=(inp&&inp.value)?hmToTs(inp.value):Date.now(); save("jbf_db",db); render(); }
-function stopFast(){ const f=fastState(); if(f.start) logFast(f.start,Date.now(),f.goalH); f.start=null; save("jbf_db",db); render(); }
+function startFast(){ const f=fastState(); const inp=$("fastStartInput"); f.start=(inp&&inp.value)?hmToTs(inp.value):Date.now(); save("jbf_db",db); scheduleFastReminder(); render(); }
+function stopFast(){ const f=fastState(); if(f.start) logFast(f.start,Date.now(),f.goalH); f.start=null; save("jbf_db",db); scheduleFastReminder(); render(); }
 function logFast(start,end,goalH){ const u=user(); if(!Array.isArray(u.fastLog)) u.fastLog=[]; const hours=Math.round((end-start)/3600000*10)/10; if(hours<0.5) return; u.fastLog.push({date:new Date(end).toISOString().slice(0,10),start,end,hours,goalH,reached:hours>=goalH}); if(u.fastLog.length>400) u.fastLog=u.fastLog.slice(-400); }
 function fastStats(){ const u=user(); const log=Array.isArray(u.fastLog)?u.fastLog:[]; const n=log.length; const reached=log.filter(x=>x.reached).length;
  const avg=n?Math.round(log.reduce((s,x)=>s+x.hours,0)/n*10)/10:0; const longest=n?Math.round(Math.max(...log.map(x=>x.hours))*10)/10:0;
@@ -930,10 +946,28 @@ function fastHistoryCard(){
  <p class="muted" style="font-size:11px;margin-top:8px">Längstes Fasten: ${fmtH(fs.longest)}</p></div>`;
 }
 function setFastGoal(h){ fastState().goalH=+h||16; save("jbf_db",db); render(); }
-function setFastStart(){ const inp=$("fastEditInput"); if(inp&&inp.value){ fastState().start=hmToTs(inp.value); save("jbf_db",db); render(); } }
+function setFastStart(){ const inp=$("fastEditInput"); if(inp&&inp.value){ fastState().start=hmToTs(inp.value); save("jbf_db",db); scheduleFastReminder(); render(); } }
 function toggleFastInfo(){ const b=$("fastInfo"); if(b) b.style.display=(b.style.display==="none"||!b.style.display)?"block":"none"; }
 function startFastTick(){ try{ clearInterval(fastTick); }catch(e){} const f=fastState(); if(!f.start) return;
  fastTick=setInterval(()=>{ const el=document.getElementById("fastElapsed"); if(!el){ clearInterval(fastTick); return; } el.textContent=fmtDur(fastElapsedMs()); const bar=document.getElementById("fastBar"); if(bar) bar.style.width=Math.min(100,fastElapsedMs()/(f.goalH*3600000)*100)+"%"; },1000); }
+let fastNotifTimer=null;
+function scheduleFastReminder(){ try{ clearTimeout(fastNotifTimer); }catch(e){}
+ if(!isLoggedIn()) return; const f=user().fast; if(!f||!f.start) return;
+ if(!("Notification" in window) || window.Notification.permission!=="granted") return;
+ if(user().profile.notifyFast===false) return;
+ const ms=(f.start+f.goalH*3600000)-Date.now(); if(ms<=0||ms>14*3600000) return;
+ fastNotifTimer=setTimeout(()=>{ try{ new Notification("JB Fitness ⏱️",{body:`Fastenziel von ${user().fast.goalH} h erreicht – stark durchgehalten!`}); }catch(e){} }, ms); }
+function requestNotif(){ if(!("Notification" in window)){ alert("Dein Browser unterstützt keine Benachrichtigungen."); return; } window.Notification.requestPermission().then(()=>{ scheduleFastReminder(); render(); }); }
+function toggleNotifyFast(){ user().profile.notifyFast=!(user().profile.notifyFast!==false); save("jbf_db",db); scheduleFastReminder(); render(); }
+function notifCard(){
+ const sup=("Notification" in window); const perm=sup?window.Notification.permission:"n/a"; const on=user().profile.notifyFast!==false;
+ const status=!sup?"Nicht unterstützt":(perm==="granted"?"aktiv ✓":(perm==="denied"?"im Browser blockiert":"noch nicht erlaubt"));
+ return `<div class="card"><div class="label">🔔 Erinnerungen</div>
+  <p class="muted" style="font-size:13px;margin:8px 0">Status: <b>${status}</b></p>
+  ${sup&&perm!=="granted"?`<button class="secondary" onclick="requestNotif()">Benachrichtigungen aktivieren</button><div style="height:12px"></div>`:""}
+  <label class="checkrow" style="display:flex;align-items:center;gap:10px"><input type="checkbox" ${on?"checked":""} onchange="toggleNotifyFast()" style="width:20px;height:20px"> Hinweis, wenn das Fastenziel erreicht ist</label>
+  <p class="note" style="margin-top:10px">Erinnerungen funktionieren, solange die App geöffnet ist. Geplante Hinweise bei <b>geschlossener</b> App kommen mit der nativen App (Store-Version).</p></div>`;
+}
 function fastInfoHtml(){ return `<div id="fastInfo" style="display:none;margin-top:10px;border-color:rgba(48,209,88,.3)" class="card sm"><div class="label" style="margin-bottom:6px;color:var(--green)">Was ist beim Fasten erlaubt?</div><p class="muted" style="font-size:13px;line-height:1.55">In der Fastenphase möglichst <b>kalorienfrei</b> bleiben. In Ordnung sind: <b>Wasser</b> (gern viel), <b>ungesüßter Tee</b> und <b>schwarzer Kaffee</b> ohne Milch & Zucker – diese brechen das Fasten praktisch nicht. Auch Mineralwasser oder Wasser mit einem Spritzer Zitrone passt.<br><br><b>Besser meiden:</b> alles mit Kalorien oder Süßstoffen – Milch/Latte, Säfte, Limonade (auch „Zero"), Snacks. Schon kleine Mengen Zucker, Eiweiß oder Fett beenden den Fastenzustand.<br><br>Trinke ausreichend – gerade beim Fasten ist das wichtig.</p></div>`; }
 function fastCard(){
  const f=fastState();
@@ -1042,6 +1076,27 @@ function drawWeight(){
  ctx.fillStyle="#64d2ff"; vals.forEach((v,i)=>{ctx.beginPath();ctx.arc(x(i),y(v),5,0,7);ctx.fill()});
  ctx.fillStyle="#8f9aaa"; ctx.fillText(keys[0].slice(5),25,162); ctx.textAlign="end"; ctx.fillText(keys[keys.length-1].slice(5),400,162); ctx.textAlign="start";
 }
+function drawCalChart(){
+ const c=$("calChart"); if(!c||!c.getContext) return; const ctx=c.getContext("2d");
+ const t=targets(), n=statsRange, data=lastDaysData(n);
+ const W=c.width,H=c.height, padL=10,padR=10,padB=16,padT=10;
+ ctx.clearRect(0,0,W,H);
+ const maxV=Math.max(t.calories,...data.map(d=>d.kcal),1)*1.15;
+ const x=i=> padL + i*((W-padL-padR)/Math.max(1,n-1));
+ const y=v=> (H-padB) - v/maxV*(H-padB-padT);
+ const gy=y(t.calories);
+ ctx.strokeStyle="rgba(48,209,88,.6)"; ctx.setLineDash([6,5]); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(padL,gy); ctx.lineTo(W-padR,gy); ctx.stroke(); ctx.setLineDash([]);
+ const pts=data.map((d,i)=>({x:x(i),y:y(d.kcal),v:d.kcal,logged:d.n>0}));
+ const logged=pts.filter(p=>p.logged);
+ if(logged.length>=1){
+   const grad=ctx.createLinearGradient(0,padT,0,H-padB); grad.addColorStop(0,"rgba(48,209,88,.30)"); grad.addColorStop(1,"rgba(48,209,88,0)");
+   ctx.beginPath(); logged.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+   ctx.lineTo(logged[logged.length-1].x,H-padB); ctx.lineTo(logged[0].x,H-padB); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+   ctx.beginPath(); logged.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.strokeStyle="#30d158"; ctx.lineWidth=3; ctx.lineJoin="round"; ctx.stroke();
+   logged.forEach(p=>{ ctx.beginPath(); ctx.fillStyle=p.v<=t.calories?"#30d158":"#ff9f43"; ctx.arc(p.x,p.y,3.5,0,7); ctx.fill(); });
+ } else { ctx.fillStyle="#8f9aaa"; ctx.font="12px -apple-system,sans-serif"; ctx.fillText("Noch keine Einträge im Zeitraum",90,80); }
+ ctx.fillStyle="#8f9aaa"; ctx.font="10px -apple-system,sans-serif"; ctx.textAlign="start"; ctx.fillText(data[0].date.slice(8,10)+"."+data[0].date.slice(5,7),padL,H-3); ctx.textAlign="end"; ctx.fillText(data[n-1].date.slice(8,10)+"."+data[n-1].date.slice(5,7),W-padR,H-3); ctx.textAlign="start";
+}
 function saveWeight(){
  const v=parseFloat(($("wval").value||"").replace(",","."));
  const d=$("wdate").value||today();
@@ -1075,11 +1130,8 @@ function premiumReport(t){
  return `<div class="card" style="border-color:rgba(48,209,88,.35)"><div class="row" style="justify-content:space-between;align-items:center"><div class="label" style="color:var(--green)">⭐ Wochenbericht (Premium)</div><div class="quick" style="flex:0 0 auto">${rb(7,'7T')}${rb(14,'14T')}${rb(30,'30T')}</div></div>
  <div class="grid2" style="margin:12px 0"><div class="kpi"><div class="label">Ø 7 Tage</div><div class="mid">${a7}</div><div class="muted" style="font-size:11px">kcal/Tag</div></div><div class="kpi"><div class="label">Ø Protein 7T</div><div class="mid">${p7}g</div><div class="muted" style="font-size:11px">Ziel ${t.protein}g</div></div><div class="kpi"><div class="label">Im Ziel (7T)</div><div class="mid">${onTarget}/${l7.length||0}</div><div class="muted" style="font-size:11px">Tage ≤ Ziel</div></div><div class="kpi"><div class="label">Streak</div><div class="mid">${currentStreak()}</div><div class="muted" style="font-size:11px">Tage in Folge</div></div></div>
  <div class="label" style="margin-bottom:8px">Kalorien letzte ${n} Tage</div>
- <div style="position:relative;height:130px;display:flex;align-items:flex-end;gap:2px">
-   <div style="position:absolute;left:0;right:0;bottom:calc(14px + (100% - 14px) * ${goalPct} / 100);border-top:1px dashed var(--green);opacity:.6"></div>
-   ${bars}
- </div>
- <p class="muted" style="font-size:12px;margin-top:6px">Gestrichelte Linie = Ziel (${t.calories} kcal). Grün = im Ziel, Orange = darüber, Grau = kein Eintrag.</p>
+ <canvas id="calChart" width="420" height="150" style="width:100%;height:150px;display:block"></canvas>
+ <p class="muted" style="font-size:12px;margin-top:6px">Linie = tägliche Kalorien · gestrichelt = Ziel (${t.calories} kcal). Punkte grün = im Ziel, orange = darüber.</p>
  <div style="height:10px"></div><button class="secondary" style="width:100%" onclick="exportCSV()">📄 Tagebuch als CSV exportieren</button></div>`;
 }
 function exportCSV(){
@@ -1120,6 +1172,7 @@ function achievementsCard(){
 function analysis(){
  const u=user(), days=Object.keys(u.entries).sort().slice(-14), t=targets();
  const avg=days.length?Math.round(days.reduce((s,d)=>s+(u.entries[d]||[]).reduce((a,e)=>a+e.kcal,0),0)/days.length):0;
+ if(isPremium()) setTimeout(drawCalChart,60);
  return appShell(`<div class="card"><div class="label">Analyse</div><div class="big">${avg}</div><div class="muted">Ø kcal der letzten ${days.length||0} Tage</div></div>
  <div class="grid2"><div class="kpi"><div class="label">Kalorienziel</div><div class="mid">${t.calories}</div></div><div class="kpi"><div class="label">Protein</div><div class="mid">${t.protein}g</div></div><div class="kpi"><div class="label">Grundumsatz</div><div class="mid">${t.bmr}</div></div><div class="kpi"><div class="label">Gesamtumsatz</div><div class="mid">${t.tdee}</div></div></div>
  <div class="card sm"><div class="label">Status</div><p class="muted" style="margin-top:8px;line-height:1.4">${avg&&avg<t.calories?"Du liegst aktuell unter deinem Ziel. Sehr gut.":"Trage ein paar Tage ein, dann bekommst du eine bessere Auswertung."}</p></div>
@@ -1144,6 +1197,7 @@ function settings(){
  <div class="card"><div class="label">Sicherheit</div><div style="height:12px"></div><div class="label" style="margin-bottom:6px">PIN für dieses Profil</div><input id="ppin" type="password" inputmode="numeric" placeholder="PIN (leer = kein Schutz)" value="${user().pass||""}"><div style="height:10px"></div><button class="secondary" onclick="savePin()">PIN speichern</button></div>
  ${favEditorCard()}
  ${goalsCard()}
+ ${notifCard()}
  ${premiumCard()}
  ${cloudCard()}
  <div class="card"><div class="label">Datensicherung</div><div style="height:12px"></div><button class="secondary" onclick="exportData()">Backup exportieren</button><div style="height:10px"></div><input type="file" id="importFile" accept=".json" onchange="importData(event)"></div>
@@ -1628,6 +1682,7 @@ function showIntro(){
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("service-worker.js").catch(()=>{}); }); }
 document.addEventListener("click",function(e){ if(!("vibrate" in navigator)) return; const t=e.target.closest("button,[onclick],.item,.chip,.tab"); if(t){ try{ navigator.vibrate(10); }catch(_){} } },true);
 initCloud();
+try{ scheduleFastReminder(); }catch(e){}
 render();
 showIntro();
 </script>
