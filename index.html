@@ -685,7 +685,7 @@ function mealOptions(sel){ return MEALS.map(([k,l])=>`<option value="${k}" ${k==
 function bmiVal(w,h){ if(!w||!h) return 0; return Math.round((+w/Math.pow((+h)/100,2))*10)/10; }
 function bmiCat(b){ return !b?"":b<18.5?"Untergewicht":b<25?"Normalgewicht":b<30?"Übergewicht":"Adipositas"; }
 function bmiColor(b){ return !b?"var(--muted)":b<18.5?"var(--blue)":b<25?"var(--green)":b<30?"var(--orange)":"var(--red)"; }
-const ACTS=[[1.2,"Sitzend – kaum Bewegung"],[1.375,"Leicht aktiv – 1–3×/Woche Sport"],[1.55,"Moderat aktiv – 3–5×/Woche"],[1.725,"Sehr aktiv – 6–7×/Woche"],[1.9,"Extrem aktiv – harter Sport / körperliche Arbeit"]];
+const ACTS=[[1.2,"Sitzend – Bürojob, wenig Alltagsbewegung"],[1.375,"Leicht – viel sitzen, etwas Bewegung"],[1.55,"Moderat – oft auf den Beinen"],[1.725,"Sehr aktiv – körperliche Arbeit"],[1.9,"Extrem – schwere körperliche Arbeit"]];
 function actOptions(sel){ sel=+sel||1.55; let opts=ACTS.map(([v,l])=>`<option value="${v}" ${Math.abs(v-sel)<0.001?"selected":""}>${l}</option>`); if(!ACTS.some(([v])=>Math.abs(v-sel)<0.001)) opts.unshift(`<option value="${sel}" selected>Aktuell (×${sel})</option>`); return opts.join(""); }
 
 function calcTargets(p){
@@ -726,7 +726,7 @@ function setActiveKcal(){ const cur=activeToday(); const v=prompt("Verbrannte Ak
 function activityCard(){
  const a=activeToday(), dyn=(user().profile.dynamicCals!==false), s=stats();
  return `<div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">🔥 Aktivität heute</div><button class="chip" style="padding:3px 9px" onclick="setActiveKcal()">${a} kcal</button></div>
- <p class="muted" style="font-size:12px;margin:6px 0 8px">Verbrannte Aktivkalorien (Sport, Schritte …). ${dyn?`Werden zum Tagesziel addiert → Budget heute <b style="color:var(--green)">${s.effCalories} kcal</b>.`:`Werden aktuell <b>nicht</b> aufs Ziel addiert (in Profil änderbar).`}</p>
+ <p class="muted" style="font-size:12px;margin:6px 0 8px">Zusätzlicher Verbrauch durch <b>Sport/Training</b> (kommt auf dein Alltags-Level oben drauf). ${dyn?`Wird zum Tagesziel addiert → Budget heute <b style="color:var(--green)">${s.effCalories} kcal</b>.`:`Wird aktuell <b>nicht</b> aufs Ziel addiert (in Profil änderbar).`}</p>
  <div class="row" style="gap:8px;flex-wrap:wrap"><button class="secondary" style="flex:1" onclick="addActive(100)">+100</button><button class="secondary" style="flex:1" onclick="addActive(250)">+250</button><button class="secondary" style="flex:0 0 auto" onclick="addActive(-100)">−</button><button class="secondary" style="flex:0 0 auto" onclick="resetActive()" title="Zurücksetzen">↺</button></div></div>`;
 }
 function appShell(content){
@@ -1190,7 +1190,8 @@ function settings(){
  <div class="row">${fld("pweight","Gewicht (kg)",p.weight||"",'type="number" step=".1" inputmode="decimal" placeholder="z.B. 74"')}${fld("pgoal","Zielgewicht (kg)",p.goalWeight||"",'type="number" step=".1" inputmode="decimal" placeholder="z.B. 70"')}</div><div style="height:10px"></div>
  <div class="label" style="margin-bottom:6px">Körperfett % <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(optional – macht die Berechnung genauer)</span></div><input id="pbf" type="number" step=".1" inputmode="decimal" placeholder="z.B. 18 – leer lassen, wenn unbekannt" value="${p.bodyfat||""}"><div style="height:10px"></div>
  <div class="label" style="margin-bottom:6px">Geschlecht</div><select id="psex"><option value="m" ${p.sex==="m"?"selected":""}>Männlich</option><option value="w" ${p.sex==="w"?"selected":""}>Weiblich</option></select><div style="height:10px"></div>
- <div class="label" style="margin-bottom:6px">Aktivität</div><select id="pact">${actOptions(p.activity)}</select><div style="height:14px"></div>
+ <div class="label" style="margin-bottom:6px">Aktivität</div><select id="pact">${actOptions(p.activity)}</select>
+ <p class="note" style="margin-top:8px">Wähle dein <b>Alltags-Level ohne gezielten Sport</b> (Beruf & normale Bewegung). Trainings/Workouts trägst du separat unter „🔥 Aktivität heute" ein – so wird nichts doppelt gezählt. Wer lieber gar nichts täglich einträgt, wählt hier ein höheres Level und schaltet das dynamische Budget im Profil unter „Ziele & Extras" ab.</p><div style="height:14px"></div>
  <div class="grid2"><div class="kpi"><div class="label">Auto-Kalorien</div><div class="mid">${t.calories}</div></div><div class="kpi"><div class="label">Auto-Protein</div><div class="mid">${t.protein}g</div></div></div><div style="height:10px"></div>
  <div class="row">${fld("pcal","Kalorien manuell",p.manualCalories||"",'type="number" inputmode="numeric" placeholder="optional"')}${fld("ppro","Protein manuell (g)",p.manualProtein||"",'type="number" inputmode="numeric" placeholder="optional"')}</div>
  <p class="note" style="margin-top:10px">Manuelle Felder leer lassen = automatische Berechnung. Aktuell verwendet: <b>${t.method}</b>. Grundumsatz ${t.bmr} · Gesamtumsatz ${t.tdee} kcal. Mit Körperfett % wird die genauere Katch-McArdle-Formel verwendet.</p><div style="height:12px"></div><button class="primary" onclick="saveProfile()">Profil speichern</button></div>
