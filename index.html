@@ -641,8 +641,10 @@ function mergeUser(a,b){
   out.meals   = a.meals || b.meals;                              // gespeicherte Mahlzeiten
   out.favs    = a.favs  || b.favs;                               // Favoriten
   out.fast    = a.fast  || b.fast;                               // Fasten-Status
+  out.fastLog = mergeFastLog(a.fastLog,b.fastLog);               // Fasten-Verlauf
   return out;
 }
+function mergeFastLog(a,b){ const map={}; [...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])].forEach(x=>{ if(x&&x.start) map[x.start]=x; }); return Object.values(map).sort((p,q)=>p.start-q.start); }
 function mergeDB(local,cloud){
   if(!cloud||!cloud.users) return local;
   if(!local||!local.users) return cloud;
@@ -722,6 +724,7 @@ function appShell(content){
  <button class="tab ${page==='home'?'active':''}" onclick="page='home';render()"><b>🔥</b>Heute</button>
  <button class="tab ${page==='weight'?'active':''}" onclick="page='weight';render()"><b>⚖️</b>Gewicht</button>
  <button class="tab ${page==='stats'?'active':''}" onclick="page='stats';render()"><b>📈</b>Analyse</button>
+ <button class="tab ${page==='fasten'?'active':''}" onclick="page='fasten';render()"><b>⏱️</b>Fasten</button>
  <button class="tab ${page==='settings'?'active':''}" onclick="page='settings';render()"><b>⚙️</b>Profil</button>
  </div></nav>${foodSheet()}${mealSheet()}${paywall()}${onboardOverlay()}`;
 }
@@ -871,13 +874,12 @@ function home(){
  const u=user(), s=stats(), pct=Math.min(100,s.kcal/s.t.calories*100), ppct=Math.min(100,s.prot/s.t.protein*100);
  const bmi=bmiVal(u.profile.weight,u.profile.height);
  const d=new Date(date+"T12:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit"});
- setTimeout(startFastTick,40);
  return appShell(`<div class="card"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><button class="chip" style="padding:5px 14px;font-size:18px" onclick="shiftDay(-1)">‹</button><div style="text-align:center"><div class="label" style="margin:0">${d}</div>${date!==today()?'<button class="chip" style="padding:2px 10px;margin-top:4px" onclick="goToday()">→ Heute</button>':'<div class="muted" style="font-size:11px">heute</div>'}</div><button class="chip" style="padding:5px 14px;font-size:18px;${date>=today()?'opacity:.3;pointer-events:none':''}" onclick="shiftDay(1)">›</button></div><div class="big">${s.rem>=0?s.rem:("+"+Math.abs(s.rem))} <span style="font-size:18px;color:var(--muted);font-weight:600">kcal</span></div><div class="muted">${s.rem>=0?"verbleibend – bleib auf/unter dem Budget zum Abnehmen":"über dem Budget"}</div><div class="progress"><div class="fill" style="width:${pct}%"></div></div>
  <div class="grid3" style="margin-top:14px"><div class="kpi"><div class="label">Gegessen</div><div class="mid">${s.kcal}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Ziel</div><div class="mid">${s.t.calories}</div><div class="muted" style="font-size:11px">kcal</div></div><div class="kpi"><div class="label">Verbrauch</div><div class="mid">${s.t.tdee}</div><div class="muted" style="font-size:11px">kcal (TDEE)</div></div></div></div>
  <div class="card sm"><div class="label">Protein</div><div class="row" style="align-items:end;justify-content:space-between"><div class="mid">${s.prot}g / ${s.t.protein}g</div><div class="muted">${Math.max(0,s.prem)}g offen</div></div><div class="progress"><div class="fill" style="width:${ppct}%;background:linear-gradient(90deg,var(--orange),var(--green))"></div></div></div>
  <div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div><div class="label">BMI</div><div class="mid">${bmi||"–"}</div></div><div style="text-align:right"><div style="color:${bmiColor(bmi)};font-weight:800">${bmiCat(bmi)}</div><div class="muted" style="font-size:11px">${u.profile.height||"–"} cm · ${u.profile.weight||"–"} kg</div></div></div></div>
  ${waterCard()}
- ${fastCard()}
+
  <div class="quick">${ensureFavs().map((f,i)=>`<button class="chip" onclick="quickFav(${i})">${f.icon||"🍽️"} ${f.name}${f.amount?` ${f.amount}g`:""}</button>`).join("")||'<span class="muted" style="font-size:13px">Noch keine Favoriten</span>'}<button class="chip" style="border-style:dashed" onclick="page='settings';render();setTimeout(()=>{var el=document.getElementById('favEditor');if(el)el.scrollIntoView({behavior:'smooth'});},60)">✏️ Bearbeiten</button></div>
  <div class="label" style="margin:18px 0 10px">Heute gegessen <span class="muted" style="font-weight:400;font-size:12px">(antippen zum Bearbeiten)</span></div>${mealsHtml()}`);
 }
@@ -908,24 +910,76 @@ let fastTick=null;
 function fastState(){ const u=user(); if(!u.fast) u.fast={start:null,goalH:16}; return u.fast; }
 function fastElapsedMs(){ const f=fastState(); return f.start?Date.now()-f.start:0; }
 function fmtDur(ms){ const s=Math.max(0,Math.floor(ms/1000)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60; return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`; }
-function startFast(){ const f=fastState(); f.start=Date.now(); save("jbf_db",db); render(); }
-function stopFast(){ const f=fastState(); f.start=null; save("jbf_db",db); render(); }
+function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function tsToHM(ts){ const d=new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function hmToTs(hm){ if(!hm) return Date.now(); const p=hm.split(":"); const d=new Date(); d.setHours(+p[0]||0,+p[1]||0,0,0); if(d.getTime()>Date.now()) d.setDate(d.getDate()-1); return d.getTime(); }
+function startFast(){ const f=fastState(); const inp=$("fastStartInput"); f.start=(inp&&inp.value)?hmToTs(inp.value):Date.now(); save("jbf_db",db); render(); }
+function stopFast(){ const f=fastState(); if(f.start) logFast(f.start,Date.now(),f.goalH); f.start=null; save("jbf_db",db); render(); }
+function logFast(start,end,goalH){ const u=user(); if(!Array.isArray(u.fastLog)) u.fastLog=[]; const hours=Math.round((end-start)/3600000*10)/10; if(hours<0.5) return; u.fastLog.push({date:new Date(end).toISOString().slice(0,10),start,end,hours,goalH,reached:hours>=goalH}); if(u.fastLog.length>400) u.fastLog=u.fastLog.slice(-400); }
+function fastStats(){ const u=user(); const log=Array.isArray(u.fastLog)?u.fastLog:[]; const n=log.length; const reached=log.filter(x=>x.reached).length;
+ const avg=n?Math.round(log.reduce((s,x)=>s+x.hours,0)/n*10)/10:0; const longest=n?Math.round(Math.max(...log.map(x=>x.hours))*10)/10:0;
+ const days=new Set(log.filter(x=>x.reached).map(x=>x.date)); const iso=x=>x.toISOString().slice(0,10); let streak=0,d=new Date(); if(!days.has(iso(d))) d.setDate(d.getDate()-1); while(days.has(iso(d))){ streak++; d.setDate(d.getDate()-1); }
+ return {n,reached,avg,longest,streak,log}; }
+function fmtH(h){ return String(Math.round(h*10)/10).replace(".",",")+" h"; }
+function fastHistoryCard(){
+ const fs=fastStats(); if(!fs.n) return `<div class="card"><div class="label">Dein Fasten-Verlauf</div><p class="muted" style="font-size:13px;margin-top:8px">Noch keine abgeschlossenen Fasten. Starte oben den Timer – sobald du „Fasten beenden" tippst, wird es hier protokolliert.</p></div>`;
+ const rows=fs.log.slice(-7).reverse().map(x=>{ const dd=new Date(x.date+"T12:00").toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"}); return `<div class="item"><div class="ico">${x.reached?"✅":"⏱️"}</div><div class="item-main"><div class="item-title">${dd}</div><div class="item-sub">${fmtH(x.hours)} · Ziel ${x.goalH} h</div></div>${x.reached?'<b style="color:var(--green)">Ziel ✓</b>':'<span class="muted" style="font-size:12px">unter Ziel</span>'}</div>`; }).join("");
+ return `<div class="card"><div class="label" style="margin-bottom:8px">Dein Fasten-Verlauf</div>
+ <div class="grid2" style="margin-bottom:6px"><div class="kpi"><div class="label">Fasten gesamt</div><div class="mid">${fs.n}</div></div><div class="kpi"><div class="label">Ziel erreicht</div><div class="mid">${fs.reached}×</div></div><div class="kpi"><div class="label">Ø Dauer</div><div class="mid">${fmtH(fs.avg)}</div></div><div class="kpi"><div class="label">Streak</div><div class="mid">${fs.streak}</div><div class="muted" style="font-size:11px">Tage mit Ziel</div></div></div>
+ <div class="label" style="margin:10px 0 6px">Letzte Fasten</div><div class="list">${rows}</div>
+ <p class="muted" style="font-size:11px;margin-top:8px">Längstes Fasten: ${fmtH(fs.longest)}</p></div>`;
+}
 function setFastGoal(h){ fastState().goalH=+h||16; save("jbf_db",db); render(); }
+function setFastStart(){ const inp=$("fastEditInput"); if(inp&&inp.value){ fastState().start=hmToTs(inp.value); save("jbf_db",db); render(); } }
+function toggleFastInfo(){ const b=$("fastInfo"); if(b) b.style.display=(b.style.display==="none"||!b.style.display)?"block":"none"; }
 function startFastTick(){ try{ clearInterval(fastTick); }catch(e){} const f=fastState(); if(!f.start) return;
  fastTick=setInterval(()=>{ const el=document.getElementById("fastElapsed"); if(!el){ clearInterval(fastTick); return; } el.textContent=fmtDur(fastElapsedMs()); const bar=document.getElementById("fastBar"); if(bar) bar.style.width=Math.min(100,fastElapsedMs()/(f.goalH*3600000)*100)+"%"; },1000); }
+function fastInfoHtml(){ return `<div id="fastInfo" style="display:none;margin-top:10px;border-color:rgba(48,209,88,.3)" class="card sm"><div class="label" style="margin-bottom:6px;color:var(--green)">Was ist beim Fasten erlaubt?</div><p class="muted" style="font-size:13px;line-height:1.55">In der Fastenphase möglichst <b>kalorienfrei</b> bleiben. In Ordnung sind: <b>Wasser</b> (gern viel), <b>ungesüßter Tee</b> und <b>schwarzer Kaffee</b> ohne Milch & Zucker – diese brechen das Fasten praktisch nicht. Auch Mineralwasser oder Wasser mit einem Spritzer Zitrone passt.<br><br><b>Besser meiden:</b> alles mit Kalorien oder Süßstoffen – Milch/Latte, Säfte, Limonade (auch „Zero"), Snacks. Schon kleine Mengen Zucker, Eiweiß oder Fett beenden den Fastenzustand.<br><br>Trinke ausreichend – gerade beim Fasten ist das wichtig.</p></div>`; }
 function fastCard(){
  const f=fastState();
+ const infoBtn=`<button onclick="toggleFastInfo()" title="Was ist erlaubt?" style="background:var(--line);border:0;color:var(--text);min-width:28px;height:28px;border-radius:50%;font-weight:800;cursor:pointer">?</button>`;
  if(!f.start){
    const opt=[12,14,16,18].map(h=>`<button class="chip ${f.goalH===h?'active':''}" style="padding:4px 10px" onclick="setFastGoal(${h})">${h}:${24-h}</button>`).join("");
-   return `<div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">⏱️ Fasten-Timer</div><div class="quick" style="flex:0 0 auto">${opt}</div></div>
-   <p class="muted" style="font-size:12px;margin:6px 0 10px">Intervallfasten ${f.goalH}:${24-f.goalH} – starte das Fasten, der Timer läuft mit.</p>
-   <button class="primary" onclick="startFast()">Fasten starten</button></div>`;
+   return `<div class="card sm"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">⏱️ Fasten-Timer</div>${infoBtn}</div>
+   <div class="quick" style="margin:8px 0">${opt}</div>
+   <p class="muted" style="font-size:12px;margin:0 0 8px">Intervallfasten ${f.goalH}:${24-f.goalH}. Du kannst die Startzeit anpassen, falls du schon früher angefangen hast.</p>
+   <div class="row" style="gap:10px;align-items:center;margin-bottom:10px"><label class="muted" style="font-size:13px">Startzeit:</label><input id="fastStartInput" type="time" value="${nowHM()}" style="width:auto;flex:0 0 auto"></div>
+   <button class="primary" onclick="startFast()">Fasten starten</button>
+   ${fastInfoHtml()}</div>`;
  }
  const goalMs=f.goalH*3600000, pct=Math.min(100,fastElapsedMs()/goalMs*100), reached=fastElapsedMs()>=goalMs;
- return `<div class="card sm" style="${reached?'border-color:rgba(48,209,88,.4)':''}"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">⏱️ Fasten läuft (Ziel ${f.goalH} h)</div>${reached?'<span style="color:var(--green);font-weight:700;font-size:12px">Ziel erreicht 🎉</span>':''}</div>
+ const sHM=tsToHM(f.start), eHM=tsToHM(f.start+goalMs);
+ return `<div class="card sm" style="${reached?'border-color:rgba(48,209,88,.4)':''}"><div class="row" style="justify-content:space-between;align-items:center"><div class="label">⏱️ Fasten läuft (Ziel ${f.goalH} h)</div><div class="row" style="gap:8px;flex:0 0 auto;align-items:center">${reached?'<span style="color:var(--green);font-weight:700;font-size:12px">Ziel erreicht 🎉</span>':''}${infoBtn}</div></div>
  <div class="big" id="fastElapsed" style="margin:4px 0">${fmtDur(fastElapsedMs())}</div>
  <div class="progress"><div class="fill" id="fastBar" style="width:${pct}%;background:linear-gradient(90deg,#7b5cff,var(--green))"></div></div>
- <div style="height:10px"></div><button class="secondary danger" onclick="stopFast()">Fasten beenden</button></div>`;
+ <p class="muted" style="font-size:12px;margin:8px 0 0">Start ${sHM} Uhr · Ziel erreicht gegen ${eHM} Uhr</p>
+ <div class="row" style="gap:10px;align-items:center;margin-top:8px"><label class="muted" style="font-size:13px">Startzeit korrigieren:</label><input id="fastEditInput" type="time" value="${sHM}" style="width:auto;flex:0 0 auto"><button class="chip" onclick="setFastStart()">✓ übernehmen</button></div>
+ <div style="height:10px"></div><button class="secondary danger" onclick="stopFast()">Fasten beenden</button>
+ ${fastInfoHtml()}</div>`;
+}
+function fastenPage(){
+ setTimeout(startFastTick,40);
+ const m=(badge,title,txt)=>`<div class="item" style="align-items:flex-start"><div class="ico" style="background:rgba(48,209,88,.15);color:var(--green);font-weight:800;font-size:13px;min-width:54px">${badge}</div><div class="item-main"><div class="item-title">${title}</div><div class="item-sub" style="white-space:normal;line-height:1.45">${txt}</div></div></div>`;
+ return appShell(`
+ <h2 style="margin:4px 2px 12px">⏱️ Fasten</h2>
+ ${fastCard()}
+ ${fastHistoryCard()}
+ <div class="card"><div class="label">Was ist Intervallfasten?</div>
+   <p class="muted" style="font-size:14px;line-height:1.55;margin-top:8px">Beim Intervallfasten wechselst du bewusst zwischen Ess- und Fastenphasen. Du änderst also vor allem <b>wann</b> du isst – nicht zwingend was. Viele nutzen es, um insgesamt etwas weniger zu essen und den Tag zu strukturieren.</p></div>
+ <div class="card"><div class="label" style="margin-bottom:8px">Methoden im Überblick</div>
+   <div class="list">
+   ${m("14:10","Einstieg","14 Std. fasten, 10 Std. essen (z. B. 9–19 Uhr). Leicht in den Alltag zu integrieren – idealer Start.")}
+   ${m("16:8","Klassiker","16 Std. fasten, 8 Std. Essensfenster (z. B. 12–20 Uhr). Die beliebteste Variante mit guter Balance.")}
+   ${m("18:6","Fortgeschritten","18 Std. fasten, 6 Std. essen. Etwas intensiver, kürzeres Essensfenster.")}
+   ${m("20:4","Warrior","20 Std. fasten, 4 Std. essen. Für Erfahrene – eher anspruchsvoll.")}
+   ${m("5:2","5:2","An 5 Tagen normal essen, an 2 (nicht aufeinanderfolgenden) Tagen deutlich weniger (oft ~500–600 kcal).")}
+   ${m("24 h","Eat-Stop-Eat","1–2× pro Woche eine volle 24-Std.-Pause zwischen zwei Mahlzeiten. Eher für Geübte.")}
+   </div></div>
+ <div class="card"><div class="label">Was kann es bringen?</div>
+   <p class="muted" style="font-size:14px;line-height:1.55;margin-top:8px">Studien deuten je nach Person auf mögliche Vorteile hin: Unterstützung beim <b>Abnehmen</b> (meist, weil unterm Strich weniger Kalorien gegessen werden), bessere <b>Blutzucker-/Insulinwerte</b> (v. a. bei Übergewicht), teils günstigere Werte bei Blutdruck, Cholesterin und Entzündung. Diskutiert werden auch Zell-Reparaturprozesse (Autophagie).<br><br><span style="color:var(--muted)">Ehrlich eingeordnet: Die Langzeit-Effekte sind noch nicht abschließend geklärt, und oft bringt eine reine Kalorienreduktion ähnliche Ergebnisse. Quellen u. a. Mayo Clinic, Cleveland Clinic, NIH.</span></p></div>
+ <div class="card" style="border-color:rgba(255,159,67,.35)"><div class="label" style="color:var(--orange)">Bitte beachten</div>
+   <p class="muted" style="font-size:13px;line-height:1.55;margin-top:8px">Das hier ist <b>keine medizinische Beratung</b>. Intervallfasten ist nicht für jeden geeignet – z. B. nicht in Schwangerschaft/Stillzeit, bei Untergewicht, bei (auch früheren) Essstörungen, für Kinder & Jugendliche. Bei Diabetes (besonders Typ 1), Erkrankungen oder Medikamenten bitte vorher ärztlich abklären. Hör auf deinen Körper – wenn es dir nicht gut tut, beende das Fasten.</p></div>
+ `);
 }
 function entryRow(e){ const amt=(e.unit&&e.units)?`${fmtPortion(e.units,e.unit)} · ${e.amount} g`:`${e.amount} g`; return `<div class="item" style="cursor:pointer" onclick="editEntry('${e.id}')"><div class="ico">${e.icon||"🍽️"}</div><div class="item-main"><div class="item-title">${e.name}</div><div class="item-sub">${amt} · ${e.protein}g Protein</div></div><b>${e.kcal}</b><button class="del" onclick="event.stopPropagation();delEntry('${e.id}')">×</button></div>`; }
 function mealsHtml(){
@@ -1045,6 +1099,7 @@ function achievementsCard(){
  const streak=currentStreak(), best=longestStreak();
  const waterHit=(u.water&&(+u.water[date]||0)>=waterGoal());
  const wkeys=Object.keys(u.weights||{}).sort(); const lostToGoal=(wkeys.length>=2 && u.profile.goalWeight)? (u.weights[wkeys[0]]-u.weights[wkeys[wkeys.length-1]])>0 && u.profile.goalWeight<u.weights[wkeys[0]] : false;
+ const fs=fastStats();
  const badges=[
    ["🚀","Erster Eintrag",totalEntries>=1],
    ["🔥","7 Tage Streak",streak>=7||best>=7],
@@ -1052,7 +1107,9 @@ function achievementsCard(){
    ["📅","10 Tage erfasst",daysLogged>=10],
    ["🥗","50 Einträge",totalEntries>=50],
    ["💧","Wasserziel heute",waterHit],
-   ["⚖️","Auf dem Weg zum Ziel",lostToGoal]
+   ["⚖️","Auf dem Weg zum Ziel",lostToGoal],
+   ["⏱️","Erstes Fasten",fs.n>=1],
+   ["✅","Fasten-Ziel erreicht",fs.reached>=1]
  ];
  const earned=badges.filter(b=>b[2]).length;
  const grid=badges.map(([ic,lbl,on])=>`<div class="kpi" style="opacity:${on?1:.4};border:1px solid ${on?'rgba(48,209,88,.4)':'var(--line)'}"><div style="font-size:26px">${ic}</div><div class="muted" style="font-size:11px;margin-top:4px">${lbl}</div>${on?'<div style="color:var(--green);font-size:11px;font-weight:700">✓</div>':'<div style="font-size:11px;color:var(--muted)">—</div>'}</div>`).join("");
@@ -1547,7 +1604,7 @@ function ensureAccountProfile(u){
  db.users[key]={email:key,pass:"",name,profile:blankProfile(name),entries:{},weights:{},custom:[]};
  db.active=key;
 }
-function render(){ $("root").innerHTML=!isLoggedIn()?(cloudConfigured()&&authView==="register"?registerScreen():loginScreen()):(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():settings());}
+function render(){ $("root").innerHTML=!isLoggedIn()?(cloudConfigured()&&authView==="register"?registerScreen():loginScreen()):(page==="home"?home():page==="weight"?weight():page==="stats"?analysis():page==="fasten"?fastenPage():settings());}
 function showIntro(){
  try{
    if(window.__introShown) return; window.__introShown=true;
